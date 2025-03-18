@@ -29,17 +29,6 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copie uniquement les fichiers buildés depuis le stage de build
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Définition de l'utilisateur non-root
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d && \
-    touch /var/run/nginx.pid && \
-    chown -R nginx:nginx /var/run/nginx.pid
-
-# Utilisation d'un utilisateur non-root
-USER nginx
-
 # Exposition du port 80
 EXPOSE 80
 

@@ -54,7 +54,6 @@ docker images dynatrace-cartography:latest
 ### Sécurité du conteneur
 
 - Utilisation d'une image de base minimale (nginx:alpine-slim)
-- Exécution en tant qu'utilisateur non-root (nginx)
 - Pas de packages de build ou de dépendances de développement dans l'image finale
 - Suppression des fichiers nginx par défaut non nécessaires
 - Permissions minimales sur les fichiers nginx

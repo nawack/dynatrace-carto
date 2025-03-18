@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 name: Docker build - test
+=======
+name: Docker Image CI
+>>>>>>> a674e76dacaf2d93714cca5907490e2df22b7512
 
 on:
   push:
@@ -15,4 +19,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
+<<<<<<< HEAD
       run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+=======
+      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+>>>>>>> a674e76dacaf2d93714cca5907490e2df22b7512

@@ -22,7 +22,22 @@ npm start
 
 ## Build Docker
 
-Pour construire l'image Docker de l'application :
+L'application utilise un build Docker multi-stage pour optimiser la sécurité et la taille de l'image :
+
+### Étapes du build
+
+1. **Stage de build** :
+   - Utilise `node:18-alpine` pour le build
+   - Installe les dépendances avec `npm ci` pour un build reproductible
+   - Compile l'application React
+
+2. **Stage de production** :
+   - Utilise `nginx:alpine-slim` comme image minimale
+   - Ne contient que les fichiers statiques compilés
+   - Exécute nginx en tant qu'utilisateur non-root
+   - Configuration nginx optimisée pour React
+
+### Construction de l'image
 
 ```bash
 # Construction de l'image
@@ -30,7 +45,48 @@ docker build -t dynatrace-cartography:latest .
 
 # Pour tester l'image localement
 docker run -p 3000:80 dynatrace-cartography:latest
+
+# Vérifier la taille de l'image
+docker images dynatrace-cartography:latest
 ```
+
+### Sécurité du conteneur
+
+- Utilisation d'une image de base minimale (nginx:alpine-slim)
+- Exécution en tant qu'utilisateur non-root (nginx)
+- Pas de packages de build ou de dépendances de développement dans l'image finale
+- Suppression des fichiers nginx par défaut non nécessaires
+- Permissions minimales sur les fichiers nginx
+
+## Intégration Continue (CI/CD)
+
+Le projet utilise GitHub Actions pour l'intégration continue. Le workflow `docker-build.yml` effectue les tests suivants à chaque push et pull request :
+
+### Tests automatisés
+
+1. **Build de l'image Docker** :
+   - Utilisation de Docker Buildx
+   - Cache des layers pour des builds plus rapides
+   - Vérification de la création de l'image
+
+2. **Tests de conteneur** :
+   - Démarrage du conteneur
+   - Vérification de l'état de fonctionnement
+   - Test de la configuration nginx
+   - Analyse des logs du conteneur
+
+3. **Analyse de sécurité** :
+   - Scan de vulnérabilités avec Trivy
+   - Détection des vulnérabilités critiques et hautes
+   - Vérification des dépendances et du système d'exploitation
+
+### Déclencheurs
+
+Le workflow est exécuté dans les cas suivants :
+- Push sur la branche master
+- Pull request vers la branche master
+- Modifications dans le dossier `client/`
+- Modifications du workflow
 
 ## Déploiement Kubernetes
 

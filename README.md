@@ -58,36 +58,6 @@ docker images dynatrace-cartography:latest
 - Suppression des fichiers nginx par défaut non nécessaires
 - Permissions minimales sur les fichiers nginx
 
-## Intégration Continue (CI/CD)
-
-Le projet utilise GitHub Actions pour l'intégration continue. Le workflow `docker-build.yml` effectue les tests suivants à chaque push et pull request :
-
-### Tests automatisés
-
-1. **Build de l'image Docker** :
-   - Utilisation de Docker Buildx
-   - Cache des layers pour des builds plus rapides
-   - Vérification de la création de l'image
-
-2. **Tests de conteneur** :
-   - Démarrage du conteneur
-   - Vérification de l'état de fonctionnement
-   - Test de la configuration nginx
-   - Analyse des logs du conteneur
-
-3. **Analyse de sécurité** :
-   - Scan de vulnérabilités avec Trivy
-   - Détection des vulnérabilités critiques et hautes
-   - Vérification des dépendances et du système d'exploitation
-
-### Déclencheurs
-
-Le workflow est exécuté dans les cas suivants :
-- Push sur la branche master
-- Pull request vers la branche master
-- Modifications dans le dossier `client/`
-- Modifications du workflow
-
 ## Déploiement Kubernetes
 
 ### Configuration

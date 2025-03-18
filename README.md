@@ -167,7 +167,7 @@ Le déploiement est configuré avec :
 
 ### Service
 
-Le service est configuré en type LoadBalancer et expose l'application sur le port 80.
+Le service est configuré en type LoadBalancer et expose l'application sur le port 443 à l'extérieur, tout en ciblant le port 80 du conteneur en interne.
 
 ## Structure du projet
 

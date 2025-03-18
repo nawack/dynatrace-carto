@@ -4,8 +4,9 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
-  - configmap.yaml
   - secrets.yaml
+  - ingress.yaml
+  - network-policy.yaml
 
 commonLabels:
   app: dynatrace-cartography

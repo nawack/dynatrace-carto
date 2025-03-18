@@ -20,6 +20,12 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 80
+        env:
+        - name: NODE_ENV
+          value: "production"
+        envFrom:
+        - secretRef:
+            name: dynatrace-cartography-secrets
         resources:
           requests:
             cpu: "100m"

@@ -9,6 +9,7 @@ Application React pour la cartographie des applications Dynatrace.
 - Kubernetes (pour le déploiement)
 - kubectl
 - kustomize
+- Ingress Controller (nginx-ingress recommandé)
 
 ## Installation en développement
 
@@ -66,8 +67,9 @@ Les fichiers de configuration Kubernetes se trouvent dans le dossier `k8s/` :
 
 - `deployment.yaml` : Configuration du déploiement
 - `service.yaml` : Configuration du service
-- `configmap.yaml` : Variables d'environnement
 - `secrets.yaml` : Secrets (à configurer avec vos valeurs)
+- `ingress.yaml` : Configuration de l'Ingress
+- `network-policy.yaml` : Politiques réseau
 - `kustomization.yaml` : Configuration Kustomize
 
 ### Préparation des secrets
@@ -83,6 +85,30 @@ echo -n "votre-url" | base64
 ```
 
 Mettez à jour le fichier `k8s/secrets.yaml` avec les valeurs encodées.
+
+### Configuration de l'Ingress
+
+1. Modifiez le fichier `k8s/ingress.yaml` pour définir votre domaine :
+```yaml
+spec:
+  rules:
+  - host: votre-domaine.com  # Remplacez par votre domaine
+```
+
+2. Assurez-vous que votre cluster a un Ingress Controller installé :
+```bash
+# Pour nginx-ingress
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm install ingress-nginx ingress-nginx/ingress-nginx
+```
+
+### Network Policies
+
+La configuration inclut une NetworkPolicy qui :
+- Restreint le trafic sortant aux API Dynatrace
+- Autorise le trafic DNS (port 53)
+- Bloque tout autre trafic sortant
+- S'applique aux pods avec le label `app: dynatrace-cartography`
 
 ### Déploiement
 
@@ -107,6 +133,23 @@ kubectl apply -k k8s/
 # Vérifier le déploiement
 kubectl get pods
 kubectl get services
+kubectl get ingress
+kubectl get networkpolicies
+```
+
+4. Configurer votre DNS pour pointer vers l'adresse IP de votre Ingress Controller
+
+### Vérification du déploiement
+
+```bash
+# Vérifier les logs des pods
+kubectl logs -l app=dynatrace-cartography
+
+# Vérifier l'état des secrets
+kubectl get secrets dynatrace-cartography-secrets
+
+# Vérifier les NetworkPolicies
+kubectl describe networkpolicy dynatrace-cartography-network-policy
 ```
 
 ### Configuration du déploiement
@@ -116,6 +159,8 @@ Le déploiement est configuré avec :
 - Ressources limitées :
   - CPU : 100m-200m
   - Mémoire : 128Mi-256Mi
+- Variables d'environnement :
+  - `NODE_ENV` : "production"
 - Probes de santé :
   - Readiness probe : vérifie la disponibilité de l'application
   - Liveness probe : vérifie que l'application fonctionne correctement
@@ -133,8 +178,9 @@ client/
 ├── k8s/                    # Configuration Kubernetes
 │   ├── deployment.yaml     # Configuration du déploiement
 │   ├── service.yaml        # Configuration du service
-│   ├── configmap.yaml      # Variables d'environnement
 │   ├── secrets.yaml        # Secrets
+│   ├── ingress.yaml        # Configuration de l'Ingress
+│   ├── network-policy.yaml # Politiques réseau
 │   └── kustomization.yaml  # Configuration Kustomize
 ├── Dockerfile              # Configuration Docker
 └── nginx.conf              # Configuration Nginx
@@ -142,13 +188,12 @@ client/
 
 ## Variables d'environnement
 
-Les variables d'environnement sont configurées dans `k8s/configmap.yaml` :
-- `NODE_ENV` : Environnement d'exécution
-- `REACT_APP_API_URL` : URL de l'API backend
+Les variables d'environnement sont définies dans le `deployment.yaml` :
+- `NODE_ENV` : "production"
 
 Les secrets sont stockés dans `k8s/secrets.yaml` :
-- `DYNATRACE_API_TOKEN` : Token d'authentification Dynatrace
-- `DYNATRACE_URL` : URL de l'instance Dynatrace
+- `REACT_APP_DYNATRACE_API_TOKEN` : Token d'authentification Dynatrace
+- `REACT_APP_DYNATRACE_URL` : URL de l'instance Dynatrace
 
 ## Maintenance
 

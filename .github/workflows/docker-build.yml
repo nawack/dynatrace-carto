@@ -1,0 +1,76 @@
+name: Docker Build Test
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'client/**'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'client/**'
+      - '.github/workflows/docker-build.yml'
+
+jobs:
+  docker-build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client
+          push: false
+          load: true
+          tags: dynatrace-cartography:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test image existence
+        run: docker image inspect dynatrace-cartography:test
+
+      - name: Start container
+        run: |
+          docker run -d -p 3000:80 --name test-container dynatrace-cartography:test
+          sleep 10
+
+      - name: Test container health
+        run: |
+          if ! docker ps | grep -q test-container; then
+            echo "Container is not running"
+            docker logs test-container
+            exit 1
+          fi
+
+      - name: Test nginx configuration
+        run: |
+          docker exec test-container nginx -t
+
+      - name: Check container logs
+        run: docker logs test-container
+
+      - name: Security scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: dynatrace-cartography:test
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      - name: Clean up
+        if: always()
+        run: |
+          docker stop test-container || true
+          docker rm test-container || true 

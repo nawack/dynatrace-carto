@@ -1,4 +1,4 @@
-# Dynatrace Cartography - Client
+# Dynatrace Carto - Client
 
 Application React pour la cartographie des applications Dynatrace.
 
@@ -42,13 +42,13 @@ L'application utilise un build Docker multi-stage pour optimiser la sécurité e
 
 ```bash
 # Construction de l'image
-docker build -t dynatrace-cartography:latest .
+docker build -t dynatrace-carto:latest .
 
 # Pour tester l'image localement
-docker run -p 3000:80 dynatrace-cartography:latest
+docker run -p 3000:80 dynatrace-carto:latest
 
 # Vérifier la taille de l'image
-docker images dynatrace-cartography:latest
+docker images dynatrace-carto:latest
 ```
 
 ### Sécurité du conteneur
@@ -107,7 +107,7 @@ La configuration inclut une NetworkPolicy qui :
 - Restreint le trafic sortant aux API Dynatrace
 - Autorise le trafic DNS (port 53)
 - Bloque tout autre trafic sortant
-- S'applique aux pods avec le label `app: dynatrace-cartography`
+- S'applique aux pods avec le label `app: dynatrace-carto`
 
 ### Déploiement
 
@@ -115,10 +115,10 @@ La configuration inclut une NetworkPolicy qui :
 
 ```bash
 # Tag de l'image
-docker tag dynatrace-cartography:latest votre-registry/dynatrace-cartography:latest
+docker tag dynatrace-carto:latest votre-registry/dynatrace-carto:latest
 
 # Push de l'image
-docker push votre-registry/dynatrace-cartography:latest
+docker push votre-registry/dynatrace-carto:latest
 ```
 
 2. Mettre à jour l'image dans le fichier `deployment.yaml` si nécessaire
@@ -142,13 +142,13 @@ kubectl get networkpolicies
 
 ```bash
 # Vérifier les logs des pods
-kubectl logs -l app=dynatrace-cartography
+kubectl logs -l app=dynatrace-carto
 
 # Vérifier l'état des secrets
-kubectl get secrets dynatrace-cartography-secrets
+kubectl get secrets dynatrace-carto-secrets
 
 # Vérifier les NetworkPolicies
-kubectl describe networkpolicy dynatrace-cartography-network-policy
+kubectl describe networkpolicy dynatrace-carto-network-policy
 ```
 
 ### Configuration du déploiement
@@ -204,7 +204,7 @@ Les secrets sont stockés dans `k8s/secrets.yaml` :
 4. Redéployer avec Kubernetes :
 
 ```bash
-kubectl rollout restart deployment dynatrace-cartography
+kubectl rollout restart deployment dynatrace-carto
 ```
 
 ### Logs
@@ -213,10 +213,10 @@ Pour consulter les logs :
 
 ```bash
 # Logs d'un pod spécifique
-kubectl logs -f deployment/dynatrace-cartography
+kubectl logs -f deployment/dynatrace-carto
 
 # Logs de tous les pods
-kubectl logs -f -l app=dynatrace-cartography
+kubectl logs -f -l app=dynatrace-carto
 ```
 
 ### Monitoring

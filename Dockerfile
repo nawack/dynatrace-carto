@@ -32,9 +32,6 @@ RUN apk add --no-cache gettext bash
 RUN rm -rf /usr/share/nginx/html/* && \
     rm /etc/nginx/conf.d/default.conf
 
-# Copie de la configuration nginx personnalisée
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
 # Copie uniquement les fichiers buildés depuis le stage de build
 COPY --from=builder /app/build /usr/share/nginx/html
 

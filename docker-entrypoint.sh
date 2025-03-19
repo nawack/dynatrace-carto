@@ -11,8 +11,8 @@ if [ -z "$REACT_APP_DYNATRACE_API_TOKEN" ]; then
     exit 1
 fi
 
-# Création d'un fichier temporaire pour la configuration nginx
-cat > /etc/nginx/conf.d/default.conf.tmp << EOF
+# Création de la configuration nginx avec les variables d'environnement
+cat > /etc/nginx/conf.d/default.conf << 'EOF'
 server {
     listen 80;
     server_name localhost;
@@ -28,7 +28,7 @@ server {
 
     # Configuration pour le routage React
     location / {
-        try_files \$uri \$uri/ /index.html;
+        try_files $uri $uri/ /index.html;
     }
 
     # Cache des assets statiques
@@ -41,9 +41,9 @@ server {
     location /api/ {
         proxy_pass ${REACT_APP_DYNATRACE_URL}/;
         proxy_set_header Host ${REACT_APP_DYNATRACE_URL};
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Authorization "Api-Token ${REACT_APP_DYNATRACE_API_TOKEN}";
 
         # Configuration CORS
@@ -53,7 +53,7 @@ server {
         add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
 
         # Gestion des requêtes OPTIONS
-        if (\$request_method = 'OPTIONS') {
+        if ($request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' '*';
             add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
             add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
@@ -66,7 +66,8 @@ server {
 }
 EOF
 
-# Remplacement de la configuration nginx
+# Substitution des variables d'environnement
+envsubst '${REACT_APP_DYNATRACE_URL} ${REACT_APP_DYNATRACE_API_TOKEN}' < /etc/nginx/conf.d/default.conf > /etc/nginx/conf.d/default.conf.tmp
 mv /etc/nginx/conf.d/default.conf.tmp /etc/nginx/conf.d/default.conf
 
 # Vérification que la substitution a bien fonctionné

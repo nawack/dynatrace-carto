@@ -6,6 +6,30 @@ const api = axios.create({
   headers: API_CONFIG.headers
 });
 
+// Intercepteur pour logger les requêtes
+api.interceptors.request.use(
+  (config) => {
+    console.log(`[Dynatrace API] Requête ${config.method?.toUpperCase()} vers ${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('[Dynatrace API] Erreur lors de la requête:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Intercepteur pour logger les réponses
+api.interceptors.response.use(
+  (response) => {
+    console.log(`[Dynatrace API] Réponse ${response.status} de ${response.config.url}`);
+    return response;
+  },
+  (error) => {
+    console.error(`[Dynatrace API] Erreur ${error.response?.status || 'unknown'} de ${error.config?.url}:`, error.message);
+    return Promise.reject(error);
+  }
+);
+
 export interface Application {
   id: string;
   name: string;
@@ -61,6 +85,7 @@ export interface ApplicationCommunication {
 }
 
 export const fetchApplications = async (): Promise<Application[]> => {
+  console.log('[Dynatrace API] Récupération des applications...');
   const response = await api.get('/api/v2/entities', {
     params: {
       entitySelector: 'type("APPLICATION")',
@@ -68,6 +93,7 @@ export const fetchApplications = async (): Promise<Application[]> => {
     }
   });
   
+  console.log(`[Dynatrace API] ${response.data.entities.length} applications récupérées`);
   return response.data.entities.map((entity: any) => ({
     id: entity.entityId,
     name: entity.displayName,
@@ -78,6 +104,7 @@ export const fetchApplications = async (): Promise<Application[]> => {
 };
 
 export const fetchHosts = async (): Promise<Host[]> => {
+  console.log('[Dynatrace API] Récupération des hôtes...');
   const response = await api.get('/api/v2/entities', {
     params: {
       entitySelector: 'type("HOST")',
@@ -85,6 +112,7 @@ export const fetchHosts = async (): Promise<Host[]> => {
     }
   });
   
+  console.log(`[Dynatrace API] ${response.data.entities.length} hôtes récupérés`);
   return response.data.entities.map((entity: any) => {
     const properties = entity.properties || {};
     return {
@@ -117,6 +145,7 @@ export const fetchHosts = async (): Promise<Host[]> => {
 };
 
 export const fetchLinks = async (): Promise<Link[]> => {
+  console.log('[Dynatrace API] Récupération des liens...');
   const response = await api.get('/api/v2/topology', {
     params: {
       entitySelector: 'type("APPLICATION"),type("HOST")',
@@ -124,6 +153,7 @@ export const fetchLinks = async (): Promise<Link[]> => {
     }
   });
   
+  console.log(`[Dynatrace API] ${response.data.relationships.length} liens récupérés`);
   return response.data.relationships.map((rel: any) => ({
     source: rel.fromEntityId,
     target: rel.toEntityId,
@@ -133,12 +163,14 @@ export const fetchLinks = async (): Promise<Link[]> => {
 };
 
 export const fetchHostById = async (id: string): Promise<Host> => {
+  console.log(`[Dynatrace API] Récupération des détails de l'hôte ${id}...`);
   const response = await api.get(`/api/v2/entities/${id}`, {
     params: {
       fields: '+properties,+tags,+toRelationships,+fromRelationships'
     }
   });
   
+  console.log(`[Dynatrace API] Détails de l'hôte ${id} récupérés`);
   const entity = response.data;
   const properties = entity.properties || {};
   
@@ -171,12 +203,14 @@ export const fetchHostById = async (id: string): Promise<Host> => {
 };
 
 export const fetchApplicationById = async (id: string): Promise<Application> => {
+  console.log(`[Dynatrace API] Récupération des détails de l'application ${id}...`);
   const response = await api.get(`/api/v2/entities/${id}`, {
     params: {
       fields: '+properties,+tags'
     }
   });
   
+  console.log(`[Dynatrace API] Détails de l'application ${id} récupérés`);
   const entity = response.data;
   return {
     id: entity.entityId,
@@ -188,7 +222,7 @@ export const fetchApplicationById = async (id: string): Promise<Application> => 
 };
 
 export const fetchApplicationCommunications = async (): Promise<ApplicationCommunication[]> => {
-  console.log('Fetching application communications...');
+  console.log('[Dynatrace API] Récupération des communications entre applications...');
   const response = await api.get('/api/v2/topology', {
     params: {
       entitySelector: 'type("APPLICATION")',
@@ -196,12 +230,11 @@ export const fetchApplicationCommunications = async (): Promise<ApplicationCommu
     }
   });
   
-  console.log('Received topology response:', response.data);
+  console.log(`[Dynatrace API] Topologie des applications récupérée`);
   
   const communications: ApplicationCommunication[] = [];
   
   response.data.entities.forEach((entity: any) => {
-    // Vérifier les relations sortantes (fromRelationships)
     entity.fromRelationships?.forEach((rel: any) => {
       if (rel.type === 'HTTP' || rel.type === 'REST' || rel.type === 'SOAP' || rel.type === 'gRPC') {
         const targetApp = rel.toEntityId;
@@ -218,7 +251,7 @@ export const fetchApplicationCommunications = async (): Promise<ApplicationCommu
     });
   });
   
-  console.log(`Processed ${communications.length} communications`);
+  console.log(`[Dynatrace API] ${communications.length} communications traitées`);
   return communications;
 };
 
@@ -226,12 +259,14 @@ export const fetchApplicationCommunicationDetails = async (
   sourceAppId: string,
   targetAppId: string
 ): Promise<ApplicationCommunication> => {
+  console.log(`[Dynatrace API] Récupération des détails de communication entre ${sourceAppId} et ${targetAppId}...`);
   const response = await api.get(`/api/v2/topology/${sourceAppId}/${targetAppId}`, {
     params: {
       fields: '+properties'
     }
   });
   
+  console.log(`[Dynatrace API] Détails de communication récupérés`);
   const rel = response.data;
   return {
     sourceApp: sourceAppId,

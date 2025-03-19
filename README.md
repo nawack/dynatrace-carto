@@ -32,6 +32,53 @@ npm install
 npm start
 ```
 
+## Configuration de l'API Dynatrace
+
+### Variables d'environnement requises
+
+L'application nécessite deux variables d'environnement essentielles :
+
+- `REACT_APP_DYNATRACE_URL` : L'URL de votre environnement Dynatrace (ex: https://your-environment.live.dynatrace.com)
+- `REACT_APP_DYNATRACE_API_TOKEN` : Votre token d'API Dynatrace
+
+### Configuration CORS et Proxy
+
+L'application utilise un proxy nginx pour gérer les appels API à Dynatrace. Cette configuration permet de :
+
+1. Éviter les problèmes CORS en faisant transiter les appels API via le même domaine
+2. Sécuriser les appels en masquant le token d'API côté serveur
+3. Simplifier la configuration côté client
+
+La configuration du proxy se trouve dans `nginx.conf` :
+```nginx
+location /api/ {
+    proxy_pass https://$http_dynatrace_url/;
+    # Configuration CORS et headers...
+}
+```
+
+Les appels API sont automatiquement redirigés vers `/api/` et proxifiés vers Dynatrace.
+
+### Configuration en développement
+
+1. Créez un fichier `.env` à la racine du projet avec les variables suivantes :
+```
+REACT_APP_DYNATRACE_URL=https://your-environment.live.dynatrace.com
+REACT_APP_DYNATRACE_API_TOKEN=your-api-token-here
+```
+
+### Configuration en production (Kubernetes)
+
+1. Créez un secret Kubernetes avec vos variables d'environnement :
+```bash
+kubectl create secret generic dynatrace-cartography-secrets \
+  --from-literal=REACT_APP_DYNATRACE_URL=https://your-environment.live.dynatrace.com \
+  --from-literal=REACT_APP_DYNATRACE_API_TOKEN=your-token \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+2. Le secret est automatiquement injecté dans le pod via le fichier `deployment.yaml`
+
 ## Build et déploiement
 
 ### Construction de l'image Docker

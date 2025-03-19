@@ -9,5 +9,5 @@ resources:
   - network-policy.yaml
 
 commonLabels:
-  app: dynatrace-cartography
+  app: dynatrace-carto
   environment: production 

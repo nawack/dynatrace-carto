@@ -60,6 +60,17 @@ docker images dynatrace-carto:latest
 
 ## Déploiement Kubernetes
 
+### Configuration des ports
+
+L'application utilise les ports suivants dans Kubernetes :
+
+- **Conteneur** : Port 80 (port interne du conteneur nginx)
+- **Service** : Port 80 (expose le port 80 du conteneur)
+- **Ingress** : Port 80 (route le trafic HTTP vers le service)
+- **NetworkPolicy** : 
+  - Port 443 (HTTPS) pour les appels API Dynatrace
+  - Port 53 (UDP) pour la résolution DNS
+
 ### Configuration
 
 Les fichiers de configuration Kubernetes se trouvent dans le dossier `k8s/` :
@@ -94,6 +105,11 @@ spec:
   - host: votre-domaine.com  # Remplacez par votre domaine
 ```
 
+L'Ingress est configuré pour :
+- Rediriger tout le trafic HTTP vers le service
+- Supporter le routage côté client de React
+- Ne pas forcer la redirection HTTPS (configurable via l'annotation `ssl-redirect`)
+
 2. Assurez-vous que votre cluster a un Ingress Controller installé :
 ```bash
 # Pour nginx-ingress
@@ -104,7 +120,7 @@ helm install ingress-nginx ingress-nginx/ingress-nginx
 ### Network Policies
 
 La configuration inclut une NetworkPolicy qui :
-- Restreint le trafic sortant aux API Dynatrace
+- Restreint le trafic sortant aux API Dynatrace (port 443)
 - Autorise le trafic DNS (port 53)
 - Bloque tout autre trafic sortant
 - S'applique aux pods avec le label `app: dynatrace-carto`
@@ -155,18 +171,20 @@ kubectl describe networkpolicy dynatrace-carto-network-policy
 
 Le déploiement est configuré avec :
 - 2 réplicas pour la haute disponibilité
-- Ressources limitées :
-  - CPU : 100m-200m
-  - Mémoire : 128Mi-256Mi
+- Ressources garanties :
+  - CPU : 200m
+  - Mémoire : 256Mi
 - Variables d'environnement :
-  - `NODE_ENV` : "production"
+  - Secrets Dynatrace (API Token et URL)
 - Probes de santé :
   - Readiness probe : vérifie la disponibilité de l'application
   - Liveness probe : vérifie que l'application fonctionne correctement
+- Authentification du registre Docker :
+  - Utilise le secret `project-registries` pour l'authentification au registre
 
 ### Service
 
-Le service est configuré en type LoadBalancer et expose l'application sur le port 443 à l'extérieur, tout en ciblant le port 80 du conteneur en interne.
+Le service est configuré en type LoadBalancer et expose l'application sur le port 80. Il fait le lien entre l'Ingress et le conteneur nginx.
 
 ## Structure du projet
 
@@ -186,9 +204,6 @@ client/
 ```
 
 ## Variables d'environnement
-
-Les variables d'environnement sont définies dans le `deployment.yaml` :
-- `NODE_ENV` : "production"
 
 Les secrets sont stockés dans `k8s/secrets.yaml` :
 - `REACT_APP_DYNATRACE_API_TOKEN` : Token d'authentification Dynatrace

@@ -91,7 +91,7 @@ docker run -p 3000:80 dynatrace-carto:latest
 
 1. Créez un secret Kubernetes avec vos variables d'environnement :
 ```bash
-kubectl create secret generic dynatrace-cartography-secrets \
+kubectl create secret generic dynatrace-carto-secrets \
   --from-literal=REACT_APP_DYNATRACE_URL=https://your-environment.live.dynatrace.com \
   --from-literal=REACT_APP_DYNATRACE_API_TOKEN=your-token \
   --dry-run=client -o yaml | kubectl apply -f -

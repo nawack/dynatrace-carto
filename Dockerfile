@@ -13,11 +13,20 @@ RUN npm ci
 # Copie du code source
 COPY . .
 
+# Build de l'application avec les variables d'environnement
+ARG REACT_APP_DYNATRACE_URL
+ARG REACT_APP_DYNATRACE_API_TOKEN
+ENV REACT_APP_DYNATRACE_URL=$REACT_APP_DYNATRACE_URL
+ENV REACT_APP_DYNATRACE_API_TOKEN=$REACT_APP_DYNATRACE_API_TOKEN
+
 # Build de l'application
 RUN npm run build
 
 # Stage de production avec une image nginx minimale
 FROM nginx:alpine-slim
+
+# Installation de envsubst et bash pour les scripts
+RUN apk add --no-cache gettext bash
 
 # Suppression de la configuration nginx par défaut
 RUN rm -rf /usr/share/nginx/html/* && \
@@ -32,5 +41,14 @@ COPY --from=builder /app/build /usr/share/nginx/html
 # Exposition du port 80
 EXPOSE 80
 
-# Démarrage de nginx
+# Script de démarrage pour substituer les variables d'environnement
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Vérification des variables d'environnement requises
+ENV REACT_APP_DYNATRACE_URL=""
+ENV REACT_APP_DYNATRACE_API_TOKEN=""
+
+# Utilisation du script de démarrage
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"] 

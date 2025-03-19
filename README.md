@@ -49,15 +49,25 @@ L'application utilise un proxy nginx pour gérer les appels API à Dynatrace. Ce
 2. Sécuriser les appels en masquant le token d'API côté serveur
 3. Simplifier la configuration côté client
 
-La configuration du proxy se trouve dans `nginx.conf` :
+La configuration du proxy se trouve dans `nginx.conf` et utilise les variables d'environnement :
 ```nginx
 location /api/ {
-    proxy_pass https://$http_dynatrace_url/;
+    set $dynatrace_url "${REACT_APP_DYNATRACE_URL}";
+    set $dynatrace_token "${REACT_APP_DYNATRACE_API_TOKEN}";
+    proxy_pass $dynatrace_url/;
+    proxy_set_header Authorization "Api-Token $dynatrace_token";
     # Configuration CORS et headers...
 }
 ```
 
-Les appels API sont automatiquement redirigés vers `/api/` et proxifiés vers Dynatrace.
+Les variables d'environnement sont injectées dans la configuration nginx au démarrage du conteneur via le script `docker-entrypoint.sh`. Cela permet de :
+- Masquer le token API côté client
+- Gérer l'authentification de manière sécurisée
+- Simplifier la configuration côté client
+- Vérifier la présence des variables requises
+- Valider la substitution des variables dans la configuration
+
+Les appels API sont automatiquement redirigés vers `/api/` et proxifiés vers Dynatrace avec le token d'authentification approprié.
 
 ### Configuration en développement
 
@@ -65,6 +75,16 @@ Les appels API sont automatiquement redirigés vers `/api/` et proxifiés vers D
 ```
 REACT_APP_DYNATRACE_URL=https://your-environment.live.dynatrace.com
 REACT_APP_DYNATRACE_API_TOKEN=your-api-token-here
+```
+
+2. Pour tester l'image Docker localement avec les variables d'environnement :
+```bash
+docker build \
+  --build-arg REACT_APP_DYNATRACE_URL=https://your-environment.live.dynatrace.com \
+  --build-arg REACT_APP_DYNATRACE_API_TOKEN=your-token \
+  -t dynatrace-carto:latest .
+
+docker run -p 3000:80 dynatrace-carto:latest
 ```
 
 ### Configuration en production (Kubernetes)
@@ -78,6 +98,8 @@ kubectl create secret generic dynatrace-cartography-secrets \
 ```
 
 2. Le secret est automatiquement injecté dans le pod via le fichier `deployment.yaml`
+
+3. Le conteneur vérifie la présence des variables d'environnement au démarrage et échoue si elles sont manquantes.
 
 ## Build et déploiement
 

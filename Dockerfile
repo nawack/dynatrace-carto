@@ -25,8 +25,18 @@ RUN npm run build
 # Stage de production avec une image nginx minimale
 FROM nginx:alpine-slim
 
-# Installation de envsubst et bash pour les scripts
-RUN apk add --no-cache gettext bash
+# Installation des outils de test réseau et autres utilitaires
+RUN apk add --no-cache \
+    gettext \
+    bash \
+    curl \
+    wget \
+    netcat-openbsd \
+    bind-tools \
+    iputils \
+    tcpdump \
+    net-tools \
+    busybox-extras
 
 # Suppression de la configuration nginx par défaut
 RUN rm -rf /usr/share/nginx/html/* && \

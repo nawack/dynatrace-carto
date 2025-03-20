@@ -3,10 +3,15 @@ kind: Service
 metadata:
   name: dynatrace-carto
 spec:
-  type: LoadBalancer
-  ports:
-  - port: 80
-    targetPort: 80
-    protocol: TCP
   selector:
-    app: dynatrace-carto 
+    app: dynatrace-carto
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      name: http
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800 

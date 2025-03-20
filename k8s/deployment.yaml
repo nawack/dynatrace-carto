@@ -13,6 +13,8 @@ spec:
     metadata:
       labels:
         app: dynatrace-carto
+      annotations:
+        networking.k8s.io/network-policy: dynatrace-carto-network-policy
     spec:
       imagePullSecrets:
       - name: project-registries
@@ -38,9 +40,16 @@ spec:
             port: 80
           initialDelaySeconds: 5
           periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /
             port: 80
           initialDelaySeconds: 15
-          periodSeconds: 20 
+          periodSeconds: 20
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        terminationGracePeriodSeconds: 60 

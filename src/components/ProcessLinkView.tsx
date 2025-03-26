@@ -16,66 +16,85 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  OutlinedInput,
   SelectChangeEvent,
-  Pagination,
   Stack,
   TextField,
-  Autocomplete,
+  Pagination,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  IconButton,
   List,
   ListItem,
   ListItemText,
   Grid,
-  CircularProgress,
-  Alert,
+  IconButton,
+  Alert
 } from '@mui/material';
-import { Host, Link, fetchHosts, Application } from '../services/api';
+import { Process, Link, fetchProcesses, fetchLinks } from '../services/api';
 import DownloadIcon from '@mui/icons-material/Download';
-import AppsIcon from '@mui/icons-material/Apps';
 import CloseIcon from '@mui/icons-material/Close';
 
-interface HostViewProps {
-  hosts: Host[];
-  links: Link[];
-  applications: Application[];
+const ITEMS_PER_PAGE_OPTIONS = [5, 10, 25, 50, 100];
+
+interface ProcessLinkViewProps {
+  processes: Process[];
 }
 
-const ITEMS_PER_PAGE_OPTIONS = [10, 20, 50];
+interface ProcessLink {
+  id: string;
+  sourceProcess: string;
+  targetProcess: string;
+  type: string;
+  status: string;
+  lastSeenTimestamp: number;
+  properties: Record<string, any>;
+}
 
-const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
+const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialProcesses }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedHost, setSelectedHost] = useState<Host | null>(null);
+  const [selectedLink, setSelectedLink] = useState<ProcessLink | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const [hosts, setHosts] = useState<Host[]>(initialHosts);
-
-  // Récupérer les types uniques
-  const uniqueTypes = Array.from(new Set(hosts.map(host => host.type)));
-  // Récupérer les statuts uniques
-  const uniqueStatuses = Array.from(new Set(hosts.map(host => host.status)));
-  // Récupérer tous les tags uniques
-  const allTags = Array.from(new Set(hosts.flatMap(host => host.tags || [])));
+  const [processLinks, setProcessLinks] = useState<ProcessLink[]>([]);
+  const [processes, setProcesses] = useState<Process[]>(initialProcesses);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const fetchedHosts = await fetchHosts();
-        setHosts(fetchedHosts);
+        const [fetchedProcesses, fetchedLinks] = await Promise.all([
+          fetchProcesses(),
+          fetchLinks()
+        ]);
+        setProcesses(fetchedProcesses);
+        
+        // Filtrer les liens pour ne garder que ceux entre processus
+        const processLinks = fetchedLinks
+          .filter((link: Link) => link.properties.sourceType === 'PROCESS' && link.properties.targetType === 'PROCESS')
+          .map((link: Link) => ({
+            id: `${link.source}-${link.target}`,
+            sourceProcess: link.source,
+            targetProcess: link.target,
+            type: link.type,
+            status: link.properties.status || 'unknown',
+            lastSeenTimestamp: parseInt(link.properties.lastSeenTimestamp || '0'),
+            properties: {
+              ...link.properties,
+              bandwidth: link.properties.bandwidth || '0',
+              latency: link.properties.latency || '0',
+              packetLoss: link.properties.packetLoss || '0'
+            }
+          }));
+        
+        setProcessLinks(processLinks);
         setError(null);
       } catch (error) {
-        console.error('Erreur lors du chargement des hôtes:', error);
-        setError('Erreur lors du chargement des hôtes');
+        console.error('Erreur lors du chargement des liens entre processus:', error);
+        setError('Erreur lors du chargement des liens entre processus');
       } finally {
         setLoading(false);
       }
@@ -84,19 +103,27 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
     loadData();
   }, []);
 
-  // Filtrer les hôtes selon les critères
-  const filteredHosts = hosts.filter(host => {
-    const matchesType = !selectedType || host.type === selectedType;
-    const matchesStatus = !selectedStatus || host.status === selectedStatus;
-    const matchesTags = selectedTags.length === 0 || 
-      selectedTags.every(tag => host.tags?.includes(tag));
-    return matchesType && matchesStatus && matchesTags;
+  const getProcessName = (processId: string): string => {
+    const process = processes.find(p => p.id === processId);
+    return process ? process.name : processId;
+  };
+
+  // Récupérer les types uniques de liens
+  const uniqueTypes = Array.from(new Set(processLinks.map(link => link.type)));
+  // Récupérer les statuts uniques
+  const uniqueStatuses = Array.from(new Set(processLinks.map(link => link.status)));
+
+  // Filtrer les liens selon les critères
+  const filteredLinks = processLinks.filter(link => {
+    const matchesType = !selectedType || link.type === selectedType;
+    const matchesStatus = !selectedStatus || link.status === selectedStatus;
+    return matchesType && matchesStatus;
   });
 
   // Calculer la pagination
-  const totalPages = Math.max(1, Math.ceil(filteredHosts.length / itemsPerPage));
+  const totalPages = Math.max(1, Math.ceil(filteredLinks.length / itemsPerPage));
   const startIndex = (page - 1) * itemsPerPage;
-  const paginatedHosts = filteredHosts.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedLinks = filteredLinks.slice(startIndex, startIndex + itemsPerPage);
 
   // Réinitialiser la page si elle dépasse le nombre total de pages
   useEffect(() => {
@@ -105,16 +132,15 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
     }
   }, [page, totalPages]);
 
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-    setPage(value);
-  };
+  const handleExportJson = () => {
+    const dataStr = JSON.stringify(filteredLinks, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = 'process-links.json';
 
-  const handleItemsPerPageChange = (event: SelectChangeEvent<number>) => {
-    const newItemsPerPage = Number(event.target.value);
-    setItemsPerPage(newItemsPerPage);
-    // Recalculer la page actuelle pour maintenir la position relative
-    const newPage = Math.min(page, Math.ceil(filteredHosts.length / newItemsPerPage));
-    setPage(newPage);
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
   };
 
   const handleTypeChange = (event: SelectChangeEvent<string>) => {
@@ -127,29 +153,27 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
     setPage(1);
   };
 
-  const handleTagToggle = (tag: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    );
-    setPage(1);
+  const handleItemsPerPageChange = (event: SelectChangeEvent<number>) => {
+    const newItemsPerPage = Number(event.target.value);
+    setItemsPerPage(newItemsPerPage);
+    const newPage = Math.min(page, Math.ceil(filteredLinks.length / newItemsPerPage));
+    setPage(newPage);
   };
 
-  const handleRowClick = (host: Host) => {
-    setSelectedHost(host);
+  const handleRowClick = (link: ProcessLink) => {
+    setSelectedLink(link);
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setSelectedHost(null);
+    setSelectedLink(null);
   };
 
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-        <CircularProgress />
+        <LinearProgress />
       </Box>
     );
   }
@@ -164,9 +188,18 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Hôtes ({filteredHosts.length})
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6" gutterBottom>
+          Liens entre processus ({filteredLinks.length})
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportJson}
+        >
+          Exporter JSON
+        </Button>
+      </Box>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <FormControl sx={{ minWidth: 200 }}>
@@ -197,20 +230,6 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
           </Select>
         </FormControl>
 
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Tags</InputLabel>
-          <Select
-            multiple
-            value={selectedTags}
-            label="Tags"
-            onChange={(e) => setSelectedTags(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-          >
-            {allTags.map(tag => (
-              <MenuItem key={tag} value={tag}>{tag}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
         <FormControl sx={{ minWidth: 100 }}>
           <InputLabel>Par page</InputLabel>
           <Select
@@ -229,43 +248,36 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Nom</TableCell>
+              <TableCell>Processus source</TableCell>
+              <TableCell>Processus cible</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Statut</TableCell>
               <TableCell>Dernière activité</TableCell>
-              <TableCell>Tags</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {paginatedHosts.map((host) => (
+            {paginatedLinks.map((link) => (
               <TableRow 
-                key={host.id}
-                onClick={() => handleRowClick(host)}
+                key={link.id}
+                onClick={() => handleRowClick(link)}
                 sx={{ cursor: 'pointer' }}
               >
-                <TableCell>{host.name}</TableCell>
-                <TableCell>{host.type}</TableCell>
+                <TableCell>{getProcessName(link.sourceProcess)}</TableCell>
+                <TableCell>{getProcessName(link.targetProcess)}</TableCell>
+                <TableCell>
+                  <Chip label={link.type} size="small" />
+                </TableCell>
                 <TableCell>
                   <Chip 
-                    label={host.status}
-                    color={host.status === 'ONLINE' ? 'success' : 
-                           host.status === 'OFFLINE' ? 'error' : 
+                    label={link.status}
+                    color={link.status === 'ONLINE' ? 'success' : 
+                           link.status === 'OFFLINE' ? 'error' : 
                            'warning'}
                     size="small"
                   />
                 </TableCell>
                 <TableCell>
-                  {new Date(host.lastSeenTimestamp).toLocaleString()}
-                </TableCell>
-                <TableCell>
-                  {host.tags?.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={tag}
-                      size="small"
-                      sx={{ mr: 0.5, mb: 0.5 }}
-                    />
-                  ))}
+                  {new Date(link.lastSeenTimestamp).toLocaleString()}
                 </TableCell>
               </TableRow>
             ))}
@@ -277,7 +289,7 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
         <Pagination 
           count={totalPages} 
           page={page} 
-          onChange={handlePageChange}
+          onChange={(event, value) => setPage(value)}
           color="primary"
           showFirstButton
           showLastButton
@@ -292,7 +304,7 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
         fullWidth
       >
         <DialogTitle>
-          Détails de l'hôte
+          Détails du lien
           <IconButton
             aria-label="close"
             onClick={handleCloseDialog}
@@ -306,7 +318,7 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          {selectedHost && (
+          {selectedLink && (
             <Box sx={{ mt: 2 }}>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
@@ -316,58 +328,67 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
                   <List>
                     <ListItem>
                       <ListItemText 
-                        primary="Nom" 
-                        secondary={selectedHost.name}
+                        primary="Processus source" 
+                        secondary={getProcessName(selectedLink.sourceProcess)}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Processus cible" 
+                        secondary={getProcessName(selectedLink.targetProcess)}
                       />
                     </ListItem>
                     <ListItem>
                       <ListItemText 
                         primary="Type" 
-                        secondary={selectedHost.type}
+                        secondary={selectedLink.type}
                       />
                     </ListItem>
                     <ListItem>
                       <ListItemText 
                         primary="Statut" 
-                        secondary={selectedHost.status}
+                        secondary={selectedLink.status}
                       />
                     </ListItem>
                     <ListItem>
                       <ListItemText 
                         primary="Dernière activité" 
-                        secondary={new Date(selectedHost.lastSeenTimestamp).toLocaleString()}
+                        secondary={new Date(selectedLink.lastSeenTimestamp).toLocaleString()}
                       />
                     </ListItem>
                   </List>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Applications associées
-                  </Typography>
-                  <List>
-                    {selectedHost.applications?.map((appId, index) => (
-                      <ListItem key={index}>
-                        <ListItemText primary={appId} />
-                      </ListItem>
-                    ))}
-                  </List>
-                </Grid>
                 <Grid item xs={12}>
                   <Typography variant="subtitle1" gutterBottom>
-                    Tags
+                    Métriques réseau
                   </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {selectedHost.tags?.map((tag, index) => (
-                      <Chip key={index} label={tag} />
-                    ))}
-                  </Box>
+                  <List>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Bande passante" 
+                        secondary={selectedLink.properties.bandwidth}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Latence" 
+                        secondary={selectedLink.properties.latency}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Perte de paquets" 
+                        secondary={selectedLink.properties.packetLoss}
+                      />
+                    </ListItem>
+                  </List>
                 </Grid>
                 <Grid item xs={12}>
                   <Typography variant="subtitle1" gutterBottom>
                     Propriétés
                   </Typography>
                   <List>
-                    {Object.entries(selectedHost.properties || {}).map(([key, value]) => (
+                    {Object.entries(selectedLink.properties || {}).map(([key, value]) => (
                       <ListItem key={key}>
                         <ListItemText 
                           primary={key} 
@@ -386,4 +407,4 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
   );
 };
 
-export default HostView;
+export default ProcessLinkView; 

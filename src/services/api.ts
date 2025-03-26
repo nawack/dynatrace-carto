@@ -33,9 +33,12 @@ api.interceptors.response.use(
 export interface Application {
   id: string;
   name: string;
-  hosts: string[];
   type: string;
+  status: string;
+  lastSeenTimestamp: number;
+  hosts: string[];
   tags: string[];
+  properties: Record<string, any>;
 }
 
 export interface Host {
@@ -70,18 +73,23 @@ export interface Link {
   target: string;
   type: string;
   properties: {
-    [key: string]: string;
+    [key: string]: string | undefined;
   };
 }
 
 export interface ApplicationCommunication {
+  id: string;
   sourceApp: string;
   targetApp: string;
   type: string;
+  status: string;
   calls: number;
   responseTime: number;
   errorRate: number;
   throughput: number;
+  lastSeenTimestamp: number;
+  tags: string[];
+  properties: Record<string, any>;
 }
 
 export interface Service {
@@ -98,6 +106,19 @@ export interface Service {
   properties: {
     [key: string]: string;
   };
+}
+
+export interface Process {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  lastSeenTimestamp: number;
+  monitoringMode: string;
+  autoInjection: boolean;
+  host: string;
+  tags: string[];
+  properties: Record<string, any>;
 }
 
 export const fetchApplications = async (): Promise<Application[]> => {
@@ -119,7 +140,10 @@ export const fetchApplications = async (): Promise<Application[]> => {
       name: entity.displayName,
       hosts: hosts,
       type: entity.type,
-      tags: entity.tags || []
+      tags: entity.tags || [],
+      status: properties.status || 'unknown',
+      lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
+      properties: properties
     };
   });
 };
@@ -173,7 +197,7 @@ export const fetchLinks = async (): Promise<Link[]> => {
   const response = await api.get('/api/v2/entities', {
     params: {
       entitySelector: 'type("APPLICATION"),type("HOST"),type("SERVICE")',
-      fields: '+properties,+toRelationships,+fromRelationships'
+      fields: '+properties,+tags,+toRelationships,+fromRelationships'
     }
   });
   
@@ -184,7 +208,7 @@ export const fetchLinks = async (): Promise<Link[]> => {
     // Traiter les relations sortantes
     const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
     toRelationships.forEach((rel: any) => {
-      if (['runs_on', 'HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'].includes(rel.type)) {
+      if (['runs_on', 'HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING', 'NETWORK'].includes(rel.type)) {
         links.push({
           source: entity.entityId,
           target: rel.toEntityId,
@@ -192,7 +216,16 @@ export const fetchLinks = async (): Promise<Link[]> => {
           properties: {
             ...rel.properties,
             sourceType: entity.type,
-            targetType: rel.toEntityType
+            targetType: rel.toEntityType,
+            status: rel.properties?.status || 'unknown',
+            lastSeenTimestamp: rel.properties?.lastSeenTimestamp || '0',
+            bandwidth: rel.properties?.bandwidth || '0',
+            latency: rel.properties?.latency || '0',
+            packetLoss: rel.properties?.packetLoss || '0',
+            calls: rel.properties?.calls || '0',
+            responseTime: rel.properties?.responseTime || '0',
+            errorRate: rel.properties?.errorRate || '0',
+            throughput: rel.properties?.throughput || '0'
           }
         });
       }
@@ -201,7 +234,7 @@ export const fetchLinks = async (): Promise<Link[]> => {
     // Traiter les relations entrantes
     const fromRelationships = Array.isArray(entity.fromRelationships) ? entity.fromRelationships : [];
     fromRelationships.forEach((rel: any) => {
-      if (['runs_on', 'HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'].includes(rel.type)) {
+      if (['runs_on', 'HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING', 'NETWORK'].includes(rel.type)) {
         links.push({
           source: rel.fromEntityId,
           target: entity.entityId,
@@ -209,7 +242,16 @@ export const fetchLinks = async (): Promise<Link[]> => {
           properties: {
             ...rel.properties,
             sourceType: rel.fromEntityType,
-            targetType: entity.type
+            targetType: entity.type,
+            status: rel.properties?.status || 'unknown',
+            lastSeenTimestamp: rel.properties?.lastSeenTimestamp || '0',
+            bandwidth: rel.properties?.bandwidth || '0',
+            latency: rel.properties?.latency || '0',
+            packetLoss: rel.properties?.packetLoss || '0',
+            calls: rel.properties?.calls || '0',
+            responseTime: rel.properties?.responseTime || '0',
+            errorRate: rel.properties?.errorRate || '0',
+            throughput: rel.properties?.throughput || '0'
           }
         });
       }
@@ -280,7 +322,10 @@ export const fetchApplicationById = async (id: string): Promise<Application> => 
     name: entity.displayName,
     hosts: hosts,
     type: entity.type,
-    tags: entity.tags || []
+    tags: entity.tags || [],
+    status: properties.status || 'unknown',
+    lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
+    properties: properties
   };
 };
 
@@ -305,13 +350,18 @@ export const fetchApplicationCommunications = async (): Promise<ApplicationCommu
       if (communicationTypes.includes(rel.type)) {
         const targetApp = rel.toEntityId;
         communications.push({
+          id: '',
           sourceApp: entity.entityId,
           targetApp: targetApp,
           type: rel.type,
+          status: '',
           calls: parseInt(rel.properties?.calls || '0'),
           responseTime: parseFloat(rel.properties?.responseTime || '0'),
           errorRate: parseFloat(rel.properties?.errorRate || '0'),
-          throughput: parseFloat(rel.properties?.throughput || '0')
+          throughput: parseFloat(rel.properties?.throughput || '0'),
+          lastSeenTimestamp: 0,
+          tags: [],
+          properties: {}
         });
       }
     });
@@ -322,13 +372,18 @@ export const fetchApplicationCommunications = async (): Promise<ApplicationCommu
       if (communicationTypes.includes(rel.type)) {
         const sourceApp = rel.fromEntityId;
         communications.push({
+          id: '',
           sourceApp: sourceApp,
           targetApp: entity.entityId,
           type: rel.type,
+          status: '',
           calls: parseInt(rel.properties?.calls || '0'),
           responseTime: parseFloat(rel.properties?.responseTime || '0'),
           errorRate: parseFloat(rel.properties?.errorRate || '0'),
-          throughput: parseFloat(rel.properties?.throughput || '0')
+          throughput: parseFloat(rel.properties?.throughput || '0'),
+          lastSeenTimestamp: 0,
+          tags: [],
+          properties: {}
         });
       }
     });
@@ -359,13 +414,18 @@ export const fetchApplicationCommunicationDetails = async (
   }
   
   return {
+    id: '',
     sourceApp: sourceAppId,
     targetApp: targetAppId,
     type: rel.type,
+    status: '',
     calls: parseInt(rel.properties?.calls || '0'),
     responseTime: parseFloat(rel.properties?.responseTime || '0'),
     errorRate: parseFloat(rel.properties?.errorRate || '0'),
-    throughput: parseFloat(rel.properties?.throughput || '0')
+    throughput: parseFloat(rel.properties?.throughput || '0'),
+    lastSeenTimestamp: 0,
+    tags: [],
+    properties: {}
   };
 };
 
@@ -400,4 +460,38 @@ export const fetchServices = async (): Promise<Service[]> => {
       properties: properties
     };
   });
+};
+
+export const fetchProcesses = async (): Promise<Process[]> => {
+  try {
+    const response = await fetch(`${API_CONFIG.baseUrl}/api/v2/entities?entitySelector=type(PROCESS)&from=-1h&to=now&fields=+properties,+tags,+relationships`, {
+      headers: {
+        'Authorization': `Api-Token ${API_CONFIG.token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`Nombre de processus récupérés: ${data.entities.length}`);
+
+    return data.entities.map((entity: any) => ({
+      id: entity.entityId,
+      name: entity.displayName || entity.entityId,
+      type: entity.type,
+      status: entity.properties?.status || 'unknown',
+      lastSeenTimestamp: parseInt(entity.properties?.lastSeenTimestamp || '0'),
+      monitoringMode: entity.properties?.monitoringMode || 'unknown',
+      autoInjection: entity.properties?.autoInjection || false,
+      host: entity.properties?.host || '',
+      tags: entity.tags || [],
+      properties: entity.properties || {}
+    }));
+  } catch (error) {
+    console.error('Erreur lors de la récupération des processus:', error);
+    throw error;
+  }
 }; 

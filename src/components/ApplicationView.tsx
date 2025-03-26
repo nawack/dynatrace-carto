@@ -27,6 +27,11 @@ import {
   DialogActions,
   IconButton,
   Grid,
+  List,
+  ListItem,
+  ListItemText,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import { Application, Host, Link, fetchApplications } from '../services/api';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -40,29 +45,36 @@ interface ApplicationViewProps {
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 20, 50];
 
-const ApplicationView: React.FC<ApplicationViewProps> = ({ applications, hosts, links }) => {
+const ApplicationView: React.FC<ApplicationViewProps> = ({ applications: initialApplications }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [selectedHostStatus, setSelectedHostStatus] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedHost, setSelectedHost] = useState<Host | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [applications, setApplications] = useState<Application[]>(initialApplications);
 
-  // Récupérer les statuts uniques des hôtes
-  const uniqueHostStatuses = Array.from(new Set(hosts.map(host => host.status)));
+  // Récupérer les types uniques
+  const uniqueTypes = Array.from(new Set(applications.map(app => app.type)));
+  // Récupérer les statuts uniques
+  const uniqueStatuses = Array.from(new Set(applications.map(app => app.status)));
   // Récupérer tous les tags uniques
-  const allTags = Array.from(new Set(applications.flatMap(app => app.tags)));
+  const allTags = Array.from(new Set(applications.flatMap(app => app.tags || [])));
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        await fetchApplications();
-        setLoading(false);
+        setLoading(true);
+        const fetchedApplications = await fetchApplications();
+        setApplications(fetchedApplications);
+        setError(null);
       } catch (error) {
         console.error('Erreur lors du chargement des applications:', error);
         setError('Erreur lors du chargement des applications');
+      } finally {
         setLoading(false);
       }
     };
@@ -72,194 +84,179 @@ const ApplicationView: React.FC<ApplicationViewProps> = ({ applications, hosts, 
 
   // Filtrer les applications selon les critères
   const filteredApplications = applications.filter(app => {
-    const matchesHostStatus = !selectedHostStatus || 
-      app.hosts.some(hostId => {
-        const host = hosts.find(h => h.id === hostId);
-        return host && host.status === selectedHostStatus;
-      });
+    const matchesType = !selectedType || app.type === selectedType;
+    const matchesStatus = !selectedStatus || app.status === selectedStatus;
     const matchesTags = selectedTags.length === 0 || 
-      selectedTags.every(tag => app.tags.includes(tag));
-    return matchesHostStatus && matchesTags;
+      selectedTags.every(tag => app.tags?.includes(tag));
+    return matchesType && matchesStatus && matchesTags;
   });
 
   // Calculer la pagination
-  const totalPages = Math.ceil(filteredApplications.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredApplications.length / itemsPerPage));
   const startIndex = (page - 1) * itemsPerPage;
   const paginatedApplications = filteredApplications.slice(startIndex, startIndex + itemsPerPage);
 
-  // Obtenir les noms des hôtes associés à une application
-  const getHostNames = (hostIds: string[]) => {
-    return hostIds.map(id => {
-      const host = hosts.find(h => h.id === id);
-      return host ? host.name : id;
-    });
-  };
-
-  // Obtenir le statut d'un hôte
-  const getHostStatus = (hostId: string) => {
-    const host = hosts.find(h => h.id === hostId);
-    return host ? host.status : 'UNKNOWN';
-  };
-
-  const handleExportJson = () => {
-    const dataStr = JSON.stringify(applications, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = 'applications.json';
-
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  };
+  // Réinitialiser la page si elle dépasse le nombre total de pages
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(1);
+    }
+  }, [page, totalPages]);
 
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
 
   const handleItemsPerPageChange = (event: SelectChangeEvent<number>) => {
-    setItemsPerPage(Number(event.target.value));
-    setPage(1); // Réinitialiser à la première page
+    const newItemsPerPage = Number(event.target.value);
+    setItemsPerPage(newItemsPerPage);
+    // Recalculer la page actuelle pour maintenir la position relative
+    const newPage = Math.min(page, Math.ceil(filteredApplications.length / newItemsPerPage));
+    setPage(newPage);
   };
 
-  const handleOpenDialog = (hostId: string) => {
-    const host = hosts.find(h => h.id === hostId);
-    if (host) {
-      setSelectedHost(host);
-      setOpenDialog(true);
-    }
+  const handleTypeChange = (event: SelectChangeEvent<string>) => {
+    setSelectedType(event.target.value);
+    setPage(1);
+  };
+
+  const handleStatusChange = (event: SelectChangeEvent<string>) => {
+    setSelectedStatus(event.target.value);
+    setPage(1);
+  };
+
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
+    setPage(1);
+  };
+
+  const handleRowClick = (application: Application) => {
+    setSelectedApplication(application);
+    setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setSelectedHost(null);
+    setSelectedApplication(null);
   };
 
   if (loading) {
-    return <LinearProgress />;
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+        <CircularProgress />
+      </Box>
+    );
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 2 }}>
-        <Typography color="error">{error}</Typography>
-      </Box>
+      <Alert severity="error" sx={{ mt: 2 }}>
+        {error}
+      </Alert>
     );
   }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6" gutterBottom>
-          Applications
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<DownloadIcon />}
-          onClick={handleExportJson}
-        >
-          Exporter JSON
-        </Button>
-      </Box>
+      <Typography variant="h6" gutterBottom>
+        Applications ({filteredApplications.length})
+      </Typography>
 
-      <Paper sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel>État des hôtes</InputLabel>
-            <Select
-              value={selectedHostStatus}
-              onChange={(e) => setSelectedHostStatus(e.target.value)}
-              label="État des hôtes"
-            >
-              <MenuItem value="">Tous</MenuItem>
-              {uniqueHostStatuses.map((status) => (
-                <MenuItem key={status} value={status}>
-                  {status}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+        <FormControl sx={{ minWidth: 200 }}>
+          <InputLabel>Type</InputLabel>
+          <Select
+            value={selectedType}
+            label="Type"
+            onChange={handleTypeChange}
+          >
+            <MenuItem value="">Tous</MenuItem>
+            {uniqueTypes.map(type => (
+              <MenuItem key={type} value={type}>{type}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-          <Autocomplete
+        <FormControl sx={{ minWidth: 200 }}>
+          <InputLabel>Statut</InputLabel>
+          <Select
+            value={selectedStatus}
+            label="Statut"
+            onChange={handleStatusChange}
+          >
+            <MenuItem value="">Tous</MenuItem>
+            {uniqueStatuses.map(status => (
+              <MenuItem key={status} value={status}>{status}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl sx={{ minWidth: 200 }}>
+          <InputLabel>Tags</InputLabel>
+          <Select
             multiple
-            options={allTags}
             value={selectedTags}
-            onChange={(_, newValue) => setSelectedTags(newValue)}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Tags"
-                placeholder="Sélectionner des tags"
-              />
-            )}
-            sx={{ minWidth: 200 }}
-          />
+            label="Tags"
+            onChange={(e) => setSelectedTags(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+          >
+            {allTags.map(tag => (
+              <MenuItem key={tag} value={tag}>{tag}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel>Applications par page</InputLabel>
-            <Select
-              value={itemsPerPage}
-              onChange={handleItemsPerPageChange}
-              label="Applications par page"
-            >
-              {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
+        <FormControl sx={{ minWidth: 100 }}>
+          <InputLabel>Par page</InputLabel>
+          <Select
+            value={itemsPerPage}
+            label="Par page"
+            onChange={handleItemsPerPageChange}
+          >
+            {ITEMS_PER_PAGE_OPTIONS.map(option => (
+              <MenuItem key={option} value={option}>{option}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
 
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          {filteredApplications.length} applications trouvées
-        </Typography>
-      </Paper>
-      
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
               <TableCell>Nom</TableCell>
-              <TableCell>Nombre d'hôtes</TableCell>
-              <TableCell>Hôtes</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Statut</TableCell>
+              <TableCell>Dernière activité</TableCell>
               <TableCell>Tags</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {paginatedApplications.map((app) => (
-              <TableRow key={app.id}>
-                <TableCell>{app.name}</TableCell>
-                <TableCell>{app.hosts.length}</TableCell>
+            {paginatedApplications.map((application) => (
+              <TableRow 
+                key={application.id}
+                onClick={() => handleRowClick(application)}
+                sx={{ cursor: 'pointer' }}
+              >
+                <TableCell>{application.name}</TableCell>
+                <TableCell>{application.type}</TableCell>
                 <TableCell>
-                  {app.hosts.map((hostId, index) => {
-                    const status = getHostStatus(hostId);
-                    const hostName = getHostNames([hostId])[0];
-                    return (
-                      <Chip
-                        key={index}
-                        label={hostName}
-                        size="small"
-                        onClick={() => handleOpenDialog(hostId)}
-                        sx={{ 
-                          mr: 0.5, 
-                          mb: 0.5,
-                          backgroundColor: status === 'ONLINE' ? 'success.main' : 
-                                        status === 'OFFLINE' ? 'error.main' : 
-                                        'warning.main',
-                          color: 'white',
-                          cursor: 'pointer',
-                          '&:hover': {
-                            backgroundColor: status === 'ONLINE' ? 'success.dark' : 
-                                          status === 'OFFLINE' ? 'error.dark' : 
-                                          'warning.dark',
-                          }
-                        }}
-                      />
-                    );
-                  })}
+                  <Chip 
+                    label={application.status}
+                    color={application.status === 'ONLINE' ? 'success' : 
+                           application.status === 'OFFLINE' ? 'error' : 
+                           'warning'}
+                    size="small"
+                  />
                 </TableCell>
                 <TableCell>
-                  {app.tags.map((tag, index) => (
+                  {new Date(application.lastSeenTimestamp).toLocaleString()}
+                </TableCell>
+                <TableCell>
+                  {application.tags?.map((tag, index) => (
                     <Chip
                       key={index}
                       label={tag}
@@ -274,84 +271,114 @@ const ApplicationView: React.FC<ApplicationViewProps> = ({ applications, hosts, 
         </Table>
       </TableContainer>
 
-      <Stack spacing={2} alignItems="center" sx={{ mt: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <Pagination 
           count={totalPages} 
           page={page} 
           onChange={handlePageChange}
           color="primary"
+          showFirstButton
+          showLastButton
           size="large"
         />
-      </Stack>
+      </Box>
 
-      <Dialog
-        open={openDialog}
+      <Dialog 
+        open={openDialog} 
         onClose={handleCloseDialog}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
       >
         <DialogTitle>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">
-              Détails de l'hôte {selectedHost?.name}
-            </Typography>
-            <IconButton onClick={handleCloseDialog} size="small">
-              <CloseIcon />
-            </IconButton>
-          </Box>
+          Détails de l'application
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseDialog}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
         <DialogContent>
-          {selectedHost && (
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={6}>
-                <Typography variant="subtitle2" color="text.secondary">Type</Typography>
-                <Typography>{selectedHost.type}</Typography>
+          {selectedApplication && (
+            <Box sx={{ mt: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Informations générales
+                  </Typography>
+                  <List>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Nom" 
+                        secondary={selectedApplication.name}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Type" 
+                        secondary={selectedApplication.type}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Statut" 
+                        secondary={selectedApplication.status}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Dernière activité" 
+                        secondary={new Date(selectedApplication.lastSeenTimestamp).toLocaleString()}
+                      />
+                    </ListItem>
+                  </List>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Hôtes associés
+                  </Typography>
+                  <List>
+                    {selectedApplication.hosts?.map((hostId, index) => (
+                      <ListItem key={index}>
+                        <ListItemText primary={hostId} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Tags
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {selectedApplication.tags?.map((tag, index) => (
+                      <Chip key={index} label={tag} />
+                    ))}
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Propriétés
+                  </Typography>
+                  <List>
+                    {Object.entries(selectedApplication.properties || {}).map(([key, value]) => (
+                      <ListItem key={key}>
+                        <ListItemText 
+                          primary={key} 
+                          secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Grid>
               </Grid>
-              <Grid item xs={6}>
-                <Typography variant="subtitle2" color="text.secondary">OS</Typography>
-                <Typography>{`${selectedHost.osType} ${selectedHost.osVersion}`}</Typography>
-              </Grid>
-              <Grid item xs={4}>
-                <Typography variant="subtitle2" color="text.secondary">CPU</Typography>
-                <Typography>{`${selectedHost.cpuUsage.toFixed(1)}%`}</Typography>
-              </Grid>
-              <Grid item xs={4}>
-                <Typography variant="subtitle2" color="text.secondary">Mémoire</Typography>
-                <Typography>{`${selectedHost.memoryUsage.toFixed(1)}%`}</Typography>
-              </Grid>
-              <Grid item xs={4}>
-                <Typography variant="subtitle2" color="text.secondary">Disque</Typography>
-                <Typography>{`${selectedHost.diskUsage.toFixed(1)}%`}</Typography>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">Status</Typography>
-                <Chip 
-                  label={selectedHost.status}
-                  color={selectedHost.status === 'ONLINE' ? 'success' : 
-                         selectedHost.status === 'OFFLINE' ? 'error' : 'warning'}
-                  size="small"
-                  sx={{ mt: 0.5 }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">Tags</Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  {selectedHost.tags.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={tag}
-                      size="small"
-                      sx={{ mr: 0.5, mb: 0.5 }}
-                    />
-                  ))}
-                </Box>
-              </Grid>
-            </Grid>
+            </Box>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Fermer</Button>
-        </DialogActions>
       </Dialog>
     </Box>
   );

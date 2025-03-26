@@ -85,17 +85,27 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
   });
 
   // Calculer la pagination
-  const totalPages = Math.ceil(filteredServices.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredServices.length / itemsPerPage));
   const startIndex = (page - 1) * itemsPerPage;
   const paginatedServices = filteredServices.slice(startIndex, startIndex + itemsPerPage);
+
+  // Réinitialiser la page si elle dépasse le nombre total de pages
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(1);
+    }
+  }, [page, totalPages]);
 
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
 
   const handleItemsPerPageChange = (event: SelectChangeEvent<number>) => {
-    setItemsPerPage(Number(event.target.value));
-    setPage(1);
+    const newItemsPerPage = Number(event.target.value);
+    setItemsPerPage(newItemsPerPage);
+    // Recalculer la page actuelle pour maintenir la position relative
+    const newPage = Math.min(page, Math.ceil(filteredServices.length / newItemsPerPage));
+    setPage(newPage);
   };
 
   const handleTypeChange = (event: SelectChangeEvent<string>) => {
@@ -146,7 +156,7 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="h6" gutterBottom>
-        Services ({services.length})
+        Services ({filteredServices.length})
       </Typography>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
@@ -262,6 +272,9 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
           page={page} 
           onChange={handlePageChange}
           color="primary"
+          showFirstButton
+          showLastButton
+          size="large"
         />
       </Box>
 

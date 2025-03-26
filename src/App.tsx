@@ -8,10 +8,12 @@ import {
   ThemeProvider,
   createTheme,
   LinearProgress,
-  Typography
+  Typography,
+  AppBar,
+  Alert
 } from '@mui/material';
-import { HostView, ApplicationView, ApplicationCommunicationView, ServiceView } from './components';
-import { fetchApplications, fetchHosts, fetchLinks, Application, Host, Link, ApplicationCommunication, Service, fetchServices, fetchApplicationCommunications } from './services/api';
+import { HostView, ApplicationView, ApplicationCommunicationView, ServiceView, ProcessView, HostLinkView, ServiceLinkView, ProcessLinkView } from './components';
+import { fetchApplications, fetchHosts, fetchLinks, Application, Host, Link, ApplicationCommunication, Service, fetchServices, fetchApplicationCommunications, fetchProcesses } from './services/api';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -89,22 +91,25 @@ function App() {
   const [communications, setCommunications] = useState<ApplicationCommunication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [processes, setProcesses] = useState<Process[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [hostsData, applicationsData, linksData, servicesData, communicationsData] = await Promise.all([
+        setLoading(true);
+        const [fetchedHosts, fetchedServices, fetchedApplications, fetchedProcesses, fetchedLinks] = await Promise.all([
           fetchHosts(),
-          fetchApplications(),
-          fetchLinks(),
           fetchServices(),
-          fetchApplicationCommunications()
+          fetchApplications(),
+          fetchProcesses(),
+          fetchLinks()
         ]);
-        setHosts(hostsData);
-        setApplications(applicationsData);
-        setLinks(linksData);
-        setServices(servicesData);
-        setCommunications(communicationsData);
+        setHosts(fetchedHosts);
+        setServices(fetchedServices);
+        setApplications(fetchedApplications);
+        setProcesses(fetchedProcesses);
+        setLinks(fetchedLinks);
+        setError(null);
       } catch (error) {
         console.error('Erreur lors du chargement des données:', error);
         setError('Erreur lors du chargement des données');
@@ -152,22 +157,34 @@ function App() {
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
               <Tab label="Hôtes" />
-              <Tab label="Applications" />
               <Tab label="Services" />
-              <Tab label="Communications" />
+              <Tab label="Applications" />
+              <Tab label="Processus" />
+              <Tab label="Liens hôtes" />
+              <Tab label="Liens services" />
+              <Tab label="Liens processus" />
             </Tabs>
           </Box>
           <TabPanel value={value} index={0}>
             <HostView hosts={hosts} links={links} applications={applications} />
           </TabPanel>
           <TabPanel value={value} index={1}>
-            <ApplicationView applications={applications} hosts={hosts} links={links} />
-          </TabPanel>
-          <TabPanel value={value} index={2}>
             <ServiceView services={services} />
           </TabPanel>
+          <TabPanel value={value} index={2}>
+            <ApplicationView applications={applications} hosts={hosts} links={links} />
+          </TabPanel>
           <TabPanel value={value} index={3}>
-            <ApplicationCommunicationView applications={applications} />
+            <ProcessView processes={processes} />
+          </TabPanel>
+          <TabPanel value={value} index={4}>
+            <HostLinkView hosts={hosts} />
+          </TabPanel>
+          <TabPanel value={value} index={5}>
+            <ServiceLinkView services={services} />
+          </TabPanel>
+          <TabPanel value={value} index={6}>
+            <ProcessLinkView processes={processes} />
           </TabPanel>
         </Box>
       </Container>

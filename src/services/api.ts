@@ -110,13 +110,18 @@ export const fetchApplications = async (): Promise<Application[]> => {
   });
   
   console.log(`[Dynatrace API] ${response.data.entities.length} applications récupérées`);
-  return response.data.entities.map((entity: any) => ({
-    id: entity.entityId,
-    name: entity.displayName,
-    hosts: entity.properties?.hosts || [],
-    type: entity.type,
-    tags: entity.tags || []
-  }));
+  return response.data.entities.map((entity: any) => {
+    const properties = entity.properties || {};
+    const hosts = Array.isArray(properties.hosts) ? properties.hosts : [];
+    
+    return {
+      id: entity.entityId,
+      name: entity.displayName,
+      hosts: hosts,
+      type: entity.type,
+      tags: entity.tags || []
+    };
+  });
 };
 
 export const fetchHosts = async (): Promise<Host[]> => {
@@ -131,6 +136,11 @@ export const fetchHosts = async (): Promise<Host[]> => {
   console.log(`[Dynatrace API] ${response.data.entities.length} hôtes récupérés`);
   return response.data.entities.map((entity: any) => {
     const properties = entity.properties || {};
+    const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
+    const applications = toRelationships
+      .filter((rel: any) => rel.type === 'runs_on')
+      .map((rel: any) => rel.toEntityId);
+
     return {
       id: entity.entityId,
       name: entity.displayName,
@@ -151,9 +161,7 @@ export const fetchHosts = async (): Promise<Host[]> => {
       lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
       monitoringMode: properties.monitoringMode || 'unknown',
       autoInjection: properties.autoInjection === 'true',
-      applications: entity.toRelationships
-        ?.filter((rel: any) => rel.type === 'runs_on')
-        .map((rel: any) => rel.toEntityId) || [],
+      applications: applications,
       tags: entity.tags || [],
       properties: properties
     };
@@ -223,6 +231,10 @@ export const fetchHostById = async (id: string): Promise<Host> => {
   console.log(`[Dynatrace API] Détails de l'hôte ${id} récupérés`);
   const entity = response.data;
   const properties = entity.properties || {};
+  const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
+  const applications = toRelationships
+    .filter((rel: any) => rel.type === 'runs_on')
+    .map((rel: any) => rel.toEntityId);
   
   return {
     id: entity.entityId,
@@ -244,9 +256,7 @@ export const fetchHostById = async (id: string): Promise<Host> => {
     lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
     monitoringMode: properties.monitoringMode || 'unknown',
     autoInjection: properties.autoInjection === 'true',
-    applications: entity.toRelationships
-      ?.filter((rel: any) => rel.type === 'runs_on')
-      .map((rel: any) => rel.toEntityId) || [],
+    applications: applications,
     tags: entity.tags || [],
     properties: properties
   };
@@ -262,10 +272,13 @@ export const fetchApplicationById = async (id: string): Promise<Application> => 
   
   console.log(`[Dynatrace API] Détails de l'application ${id} récupérés`);
   const entity = response.data;
+  const properties = entity.properties || {};
+  const hosts = Array.isArray(properties.hosts) ? properties.hosts : [];
+  
   return {
     id: entity.entityId,
     name: entity.displayName,
-    hosts: entity.properties?.hosts || [],
+    hosts: hosts,
     type: entity.type,
     tags: entity.tags || []
   };

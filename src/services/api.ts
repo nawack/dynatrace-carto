@@ -399,6 +399,16 @@ export const fetchServices = async (): Promise<Service[]> => {
   });
   
   console.log(`[Dynatrace API] ${response.data.entities.length} services récupérés`);
+  
+  // Log pour déboguer la structure des données
+  if (response.data.entities.length > 0) {
+    console.log('Exemple de données de service:', {
+      entityId: response.data.entities[0].entityId,
+      properties: response.data.entities[0].properties,
+      lastSeenTimestamp: response.data.entities[0].properties?.lastSeenTimestamp
+    });
+  }
+
   return response.data.entities.map((entity: any) => {
     const properties = entity.properties || {};
     const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
@@ -406,13 +416,20 @@ export const fetchServices = async (): Promise<Service[]> => {
       .filter((rel: any) => rel.type === 'runs_on')
       .map((rel: any) => rel.toEntityId);
 
+    // Log pour déboguer la conversion du timestamp
+    const lastSeenTimestamp = properties.lastSeenTimestamp;
+    console.log(`Conversion du timestamp pour ${entity.entityId}:`, {
+      original: lastSeenTimestamp,
+      parsed: parseInt(lastSeenTimestamp || '0')
+    });
+
     return {
       id: entity.entityId,
-      name: entity.displayName,
+      name: entity.displayName || entity.entityId,
       type: entity.type,
-      technology: properties.technology || '',
+      technology: properties.technology || 'unknown',
       status: properties.status || 'unknown',
-      lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
+      lastSeenTimestamp: parseInt(lastSeenTimestamp || '0'),
       monitoringMode: properties.monitoringMode || 'unknown',
       autoInjection: properties.autoInjection === 'true',
       applications: applications,

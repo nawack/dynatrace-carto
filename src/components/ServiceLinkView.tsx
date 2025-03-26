@@ -33,6 +33,7 @@ import {
 import { Service, Link, fetchServices, fetchLinks } from '../services/api';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
+import InfoIcon from '@mui/icons-material/Info';
 
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 25, 50, 100];
 
@@ -42,12 +43,19 @@ interface ServiceLinkViewProps {
 
 interface ServiceLink {
   id: string;
-  sourceService: string;
-  targetService: string;
+  source: string;
+  target: string;
   type: string;
   status: string;
   lastSeenTimestamp: number;
-  properties: Record<string, any>;
+  properties: {
+    status?: string;
+    lastSeenTimestamp?: string;
+    calls?: string;
+    responseTime?: string;
+    errorRate?: string;
+    throughput?: string;
+  };
 }
 
 const ServiceLinkView: React.FC<ServiceLinkViewProps> = ({ services: initialServices }) => {
@@ -74,11 +82,16 @@ const ServiceLinkView: React.FC<ServiceLinkViewProps> = ({ services: initialServ
         
         // Filtrer les liens pour ne garder que ceux entre services
         const serviceLinks = fetchedLinks
-          .filter((link: Link) => link.properties.sourceType === 'SERVICE' && link.properties.targetType === 'SERVICE')
+          .filter((link: Link) => {
+            // Vérifier si c'est un lien d'application entre services
+            const isApplicationLink = ['HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'].includes(link.type);
+            const isBetweenServices = link.properties.sourceType === 'SERVICE' && link.properties.targetType === 'SERVICE';
+            return isApplicationLink && isBetweenServices;
+          })
           .map((link: Link) => ({
             id: `${link.source}-${link.target}`,
-            sourceService: link.source,
-            targetService: link.target,
+            source: link.source,
+            target: link.target,
             type: link.type,
             status: link.properties.status || 'unknown',
             lastSeenTimestamp: parseInt(link.properties.lastSeenTimestamp || '0'),
@@ -171,6 +184,12 @@ const ServiceLinkView: React.FC<ServiceLinkViewProps> = ({ services: initialServ
     setSelectedLink(null);
   };
 
+  const getStatusColor = (status: string) => {
+    if (status === 'ONLINE') return 'success';
+    if (status === 'OFFLINE') return 'error';
+    return 'warning';
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
@@ -257,31 +276,32 @@ const ServiceLinkView: React.FC<ServiceLinkViewProps> = ({ services: initialServ
             </TableRow>
           </TableHead>
           <TableBody>
-            {paginatedLinks.map((link) => (
-              <TableRow 
-                key={link.id}
-                onClick={() => handleRowClick(link)}
-                sx={{ cursor: 'pointer' }}
-              >
-                <TableCell>{getServiceName(link.sourceService)}</TableCell>
-                <TableCell>{getServiceName(link.targetService)}</TableCell>
-                <TableCell>
-                  <Chip label={link.type} size="small" />
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    label={link.status}
-                    color={link.status === 'ONLINE' ? 'success' : 
-                           link.status === 'OFFLINE' ? 'error' : 
-                           'warning'}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  {new Date(link.lastSeenTimestamp).toLocaleString()}
-                </TableCell>
-              </TableRow>
-            ))}
+            {paginatedLinks.map((link, index) => {
+              const sourceService = services.find(s => s.id === link.source);
+              const targetService = services.find(s => s.id === link.target);
+              
+              if (!sourceService || !targetService) return null;
+              
+              return (
+                <TableRow key={index}>
+                  <TableCell>{sourceService.name}</TableCell>
+                  <TableCell>{targetService.name}</TableCell>
+                  <TableCell>{link.type}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={link.properties.status || 'unknown'} 
+                      color={getStatusColor(link.properties.status || 'unknown')} 
+                      size="small" 
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton size="small" onClick={() => handleRowClick(link)}>
+                      <InfoIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
@@ -330,13 +350,13 @@ const ServiceLinkView: React.FC<ServiceLinkViewProps> = ({ services: initialServ
                     <ListItem>
                       <ListItemText 
                         primary="Service source" 
-                        secondary={getServiceName(selectedLink.sourceService)}
+                        secondary={getServiceName(selectedLink.source)}
                       />
                     </ListItem>
                     <ListItem>
                       <ListItemText 
                         primary="Service cible" 
-                        secondary={getServiceName(selectedLink.targetService)}
+                        secondary={getServiceName(selectedLink.target)}
                       />
                     </ListItem>
                     <ListItem>
@@ -348,7 +368,7 @@ const ServiceLinkView: React.FC<ServiceLinkViewProps> = ({ services: initialServ
                     <ListItem>
                       <ListItemText 
                         primary="Statut" 
-                        secondary={selectedLink.status}
+                        secondary={selectedLink.properties.status || 'unknown'}
                       />
                     </ListItem>
                     <ListItem>

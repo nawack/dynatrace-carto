@@ -26,9 +26,11 @@ import {
   Grid,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  Button
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import DownloadIcon from '@mui/icons-material/Download';
 import { Service } from '../services/api';
 import { fetchServices } from '../services/api';
 
@@ -137,6 +139,23 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
     setSelectedService(null);
   };
 
+  const getStatusColor = (status: string) => {
+    if (status === 'ONLINE') return 'success';
+    if (status === 'OFFLINE') return 'error';
+    return 'warning';
+  };
+
+  const handleExportJson = () => {
+    const dataStr = JSON.stringify(filteredServices, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = 'services.json';
+
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
@@ -155,9 +174,18 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Services ({filteredServices.length})
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6" gutterBottom>
+          Services ({filteredServices.length})
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportJson}
+        >
+          Exporter JSON
+        </Button>
+      </Box>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <FormControl sx={{ minWidth: 200 }}>
@@ -241,24 +269,21 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
                 <TableCell>
                   <Chip 
                     label={service.status}
-                    color={service.status === 'ONLINE' ? 'success' : 
-                           service.status === 'OFFLINE' ? 'error' : 
-                           'warning'}
+                    color={getStatusColor(service.status)}
                     size="small"
                   />
                 </TableCell>
                 <TableCell>
-                  {new Date(service.lastSeenTimestamp).toLocaleString()}
+                  {service.lastSeenTimestamp > 0 
+                    ? new Date(service.lastSeenTimestamp).toLocaleString('fr-FR')
+                    : 'Jamais'}
                 </TableCell>
                 <TableCell>
-                  {service.tags?.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={tag}
-                      size="small"
-                      sx={{ mr: 0.5, mb: 0.5 }}
-                    />
-                  ))}
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {service.tags?.map((tag, index) => (
+                      <Chip key={index} label={tag} size="small" />
+                    ))}
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}
@@ -346,7 +371,9 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
                     <ListItem>
                       <ListItemText 
                         primary="Dernière activité" 
-                        secondary={new Date(selectedService.lastSeenTimestamp).toLocaleString()}
+                        secondary={selectedService.lastSeenTimestamp > 0 
+                          ? new Date(selectedService.lastSeenTimestamp).toLocaleString('fr-FR')
+                          : 'Jamais'}
                       />
                     </ListItem>
                   </List>
@@ -369,7 +396,7 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
                   </Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {selectedService.tags?.map((tag, index) => (
-                      <Chip key={index} label={tag} />
+                      <Chip key={index} label={tag} size="small" />
                     ))}
                   </Box>
                 </Grid>

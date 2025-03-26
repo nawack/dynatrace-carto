@@ -45,13 +45,13 @@ interface HostViewProps {
   applications: Application[];
 }
 
-const ITEMS_PER_PAGE_OPTIONS = [10, 20, 50];
+const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -246,20 +246,23 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
       </Stack>
 
       <TableContainer component={Paper}>
-        <Table>
+        <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>Nom</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Statut</TableCell>
+              <TableCell>OS</TableCell>
+              <TableCell>CPU</TableCell>
+              <TableCell>Mémoire</TableCell>
               <TableCell>Dernière activité</TableCell>
-              <TableCell>Tags</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {paginatedHosts.map((host) => (
               <TableRow 
                 key={host.id}
+                hover
                 onClick={() => handleRowClick(host)}
                 sx={{ cursor: 'pointer' }}
               >
@@ -267,25 +270,20 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
                 <TableCell>{host.type}</TableCell>
                 <TableCell>
                   <Chip 
-                    label={host.status}
+                    label={host.status} 
                     color={host.status === 'ONLINE' ? 'success' : 
                            host.status === 'OFFLINE' ? 'error' : 
                            'warning'}
                     size="small"
                   />
                 </TableCell>
+                <TableCell>{`${host.osType} ${host.osVersion}`}</TableCell>
+                <TableCell>{`${host.cpuUsage.toFixed(1)}%`}</TableCell>
+                <TableCell>{`${host.memoryUsage.toFixed(1)}%`}</TableCell>
                 <TableCell>
-                  {new Date(host.lastSeenTimestamp).toLocaleString()}
-                </TableCell>
-                <TableCell>
-                  {host.tags?.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={tag}
-                      size="small"
-                      sx={{ mr: 0.5, mb: 0.5 }}
-                    />
-                  ))}
+                  {host.lastSeenTimestamp > 0 
+                    ? new Date(host.lastSeenTimestamp).toLocaleString('fr-FR')
+                    : 'Jamais'}
                 </TableCell>
               </TableRow>
             ))}
@@ -297,11 +295,10 @@ const HostView: React.FC<HostViewProps> = ({ hosts: initialHosts }) => {
         <Pagination 
           count={totalPages} 
           page={page} 
-          onChange={handlePageChange}
+          onChange={(_, value) => setPage(value)}
           color="primary"
           showFirstButton
           showLastButton
-          size="large"
         />
       </Box>
 

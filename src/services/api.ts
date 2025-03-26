@@ -368,6 +368,11 @@ export const fetchServices = async (): Promise<Service[]> => {
   console.log(`[Dynatrace API] ${response.data.entities.length} services récupérés`);
   return response.data.entities.map((entity: any) => {
     const properties = entity.properties || {};
+    const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
+    const applications = toRelationships
+      .filter((rel: any) => rel.type === 'runs_on')
+      .map((rel: any) => rel.toEntityId);
+
     return {
       id: entity.entityId,
       name: entity.displayName,
@@ -377,9 +382,7 @@ export const fetchServices = async (): Promise<Service[]> => {
       lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
       monitoringMode: properties.monitoringMode || 'unknown',
       autoInjection: properties.autoInjection === 'true',
-      applications: entity.toRelationships
-        ?.filter((rel: any) => rel.type === 'runs_on')
-        .map((rel: any) => rel.toEntityId) || [],
+      applications: applications,
       tags: entity.tags || [],
       properties: properties
     };

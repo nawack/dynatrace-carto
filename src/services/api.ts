@@ -103,6 +103,11 @@ export interface Process {
   autoInjection: boolean;
   host: string;
   tags: string[];
+  softwareTechnologies: string[];
+  detectionMethod: string;
+  processType: string;
+  commandLine: string;
+  pid: number;
   properties: Record<string, any>;
 }
 
@@ -193,6 +198,7 @@ export const fetchLinks = async (): Promise<Link[]> => {
   const networkLinks = ['NETWORK'];
   const applicationLinks = ['HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'];
   const runsOnLinks = ['runs_on'];
+  const processLinks = ['PROCESS_GROUP', 'PROCESS_INSTANCE', 'PROCESS_GROUP_INSTANCE'];
   
   response.data.entities.forEach((entity: any) => {
     // Traiter les relations sortantes
@@ -221,6 +227,10 @@ export const fetchLinks = async (): Promise<Link[]> => {
         isValidLink = (sourceType === 'APPLICATION' && targetType === 'HOST') ||
                      (sourceType === 'SERVICE' && targetType === 'HOST') ||
                      (sourceType === 'PROCESS' && targetType === 'HOST');
+      }
+      // Liens entre processus
+      else if (processLinks.includes(linkType)) {
+        isValidLink = (sourceType === 'PROCESS' && targetType === 'PROCESS');
       }
 
       if (isValidLink) {
@@ -272,6 +282,10 @@ export const fetchLinks = async (): Promise<Link[]> => {
         isValidLink = (sourceType === 'APPLICATION' && targetType === 'HOST') ||
                      (sourceType === 'SERVICE' && targetType === 'HOST') ||
                      (sourceType === 'PROCESS' && targetType === 'HOST');
+      }
+      // Liens entre processus
+      else if (processLinks.includes(linkType)) {
+        isValidLink = (sourceType === 'PROCESS' && targetType === 'PROCESS');
       }
 
       if (isValidLink) {
@@ -429,6 +443,11 @@ export const fetchProcesses = async (): Promise<Process[]> => {
       autoInjection: properties.autoInjection === 'true',
       host: host,
       tags: entity.tags || [],
+      softwareTechnologies: Array.isArray(properties.softwareTechnologies) ? properties.softwareTechnologies : [],
+      detectionMethod: properties.detectionMethod || 'unknown',
+      processType: properties.processType || 'unknown',
+      commandLine: properties.commandLine || '',
+      pid: parseInt(properties.pid || '0'),
       properties: properties
     };
   });

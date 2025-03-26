@@ -18,7 +18,8 @@ Application React pour la cartographie des applications Dynatrace. Elle permet d
 - Analyse des liens entre entités avec différents types :
   - Liens entre hôtes (NETWORK)
   - Liens entre services (HTTP, REST, SOAP, gRPC, DATABASE, MESSAGING)
-  - Liens entre processus (NETWORK)
+  - Liens entre processus (NETWORK, PROCESS_GROUP, PROCESS_INSTANCE, PROCESS_GROUP_INSTANCE)
+  - Liens de dépendance (runs_on)
 - Interface utilisateur moderne avec thème sombre
 - Visualisation interactive avec graphes et diagrammes
 - Filtrage et recherche avancés pour chaque vue
@@ -26,6 +27,58 @@ Application React pour la cartographie des applications Dynatrace. Elle permet d
 - Métriques détaillées pour chaque type de lien :
   - Métriques réseau (bandwidth, latency, packetLoss)
   - Métriques de performance (calls, responseTime, errorRate, throughput)
+
+## Types d'entités et leurs propriétés
+
+### Hôtes
+- Métriques système (CPU, mémoire, disque)
+- Informations système (OS, architecture)
+- État de surveillance
+- Applications associées
+
+### Services
+- Type de technologie
+- État de surveillance
+- Applications associées
+- Métriques de performance
+
+### Applications
+- État de surveillance
+- Hôtes associés
+- Services associés
+- Métriques de performance
+
+### Processus
+- État de surveillance
+- Hôte associé
+- Technologies logicielles
+- Méthode de détection
+- Type de processus
+- Ligne de commande
+- PID
+- Métriques de performance
+
+## Types de liens supportés
+
+### Liens réseau
+- Entre hôtes
+- Entre processus
+
+### Liens d'application
+- HTTP
+- REST
+- SOAP
+- gRPC
+- DATABASE
+- MESSAGING
+
+### Liens de processus
+- PROCESS_GROUP
+- PROCESS_INSTANCE
+- PROCESS_GROUP_INSTANCE
+
+### Liens de dépendance
+- runs_on (applications/services/processus vers hôtes)
 
 ## Prérequis
 

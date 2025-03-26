@@ -22,7 +22,11 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Grid,
+  List,
+  ListItem,
+  ListItemText
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { Service, fetchServices } from '../services/api';
@@ -135,7 +139,11 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
   }
 
   return (
-    <Box>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        Services
+      </Typography>
+
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <FormControl sx={{ minWidth: 200 }}>
           <InputLabel>Type</InputLabel>
@@ -166,10 +174,24 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
         </FormControl>
 
         <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Éléments par page</InputLabel>
+          <InputLabel>Tags</InputLabel>
+          <Select
+            multiple
+            value={selectedTags}
+            label="Tags"
+            onChange={(e) => setSelectedTags(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+          >
+            {allTags.map(tag => (
+              <MenuItem key={tag} value={tag}>{tag}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl sx={{ minWidth: 100 }}>
+          <InputLabel>Par page</InputLabel>
           <Select
             value={itemsPerPage}
-            label="Éléments par page"
+            label="Par page"
             onChange={handleItemsPerPageChange}
           >
             {ITEMS_PER_PAGE_OPTIONS.map(option => (
@@ -178,20 +200,6 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
           </Select>
         </FormControl>
       </Stack>
-
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="subtitle1" gutterBottom>Tags :</Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-          {allTags.map(tag => (
-            <Chip
-              key={tag}
-              label={tag}
-              onClick={() => handleTagToggle(tag)}
-              color={selectedTags.includes(tag) ? "primary" : "default"}
-            />
-          ))}
-        </Stack>
-      </Box>
 
       <TableContainer component={Paper}>
         <Table>
@@ -207,30 +215,35 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
           </TableHead>
           <TableBody>
             {paginatedServices.map((service) => (
-              <TableRow
+              <TableRow 
                 key={service.id}
-                hover
                 onClick={() => handleRowClick(service)}
                 sx={{ cursor: 'pointer' }}
               >
                 <TableCell>{service.name}</TableCell>
                 <TableCell>{service.type}</TableCell>
                 <TableCell>{service.technology}</TableCell>
-                <TableCell>{service.status}</TableCell>
+                <TableCell>
+                  <Chip 
+                    label={service.status}
+                    color={service.status === 'ONLINE' ? 'success' : 
+                           service.status === 'OFFLINE' ? 'error' : 
+                           'warning'}
+                    size="small"
+                  />
+                </TableCell>
                 <TableCell>
                   {new Date(service.lastSeenTimestamp).toLocaleString()}
                 </TableCell>
                 <TableCell>
-                  <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
-                    {service.tags.map(tag => (
-                      <Chip
-                        key={tag}
-                        label={tag}
-                        size="small"
-                        variant="outlined"
-                      />
-                    ))}
-                  </Stack>
+                  {service.tags.map((tag, index) => (
+                    <Chip
+                      key={index}
+                      label={tag}
+                      size="small"
+                      sx={{ mr: 0.5, mb: 0.5 }}
+                    />
+                  ))}
                 </TableCell>
               </TableRow>
             ))}
@@ -238,84 +251,126 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
         </Table>
       </TableContainer>
 
-      <Stack spacing={2} alignItems="center" sx={{ mt: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <Pagination 
           count={totalPages} 
           page={page} 
           onChange={handlePageChange}
           color="primary"
-          size="large"
         />
-      </Stack>
+      </Box>
 
-      <Dialog
-        open={openDialog}
+      <Dialog 
+        open={openDialog} 
         onClose={handleCloseDialog}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
       >
         <DialogTitle>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">
-              Détails du service {selectedService?.name}
-            </Typography>
-            <IconButton onClick={handleCloseDialog} size="small">
-              <CloseIcon />
-            </IconButton>
-          </Box>
+          Détails du service
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseDialog}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
         <DialogContent>
           {selectedService && (
             <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                Informations générales
-              </Typography>
-              <Typography>ID: {selectedService.id}</Typography>
-              <Typography>Type: {selectedService.type}</Typography>
-              <Typography>Technologie: {selectedService.technology}</Typography>
-              <Typography>Statut: {selectedService.status}</Typography>
-              <Typography>
-                Dernière activité: {new Date(selectedService.lastSeenTimestamp).toLocaleString()}
-              </Typography>
-              <Typography>Mode de monitoring: {selectedService.monitoringMode}</Typography>
-              <Typography>Auto-injection: {selectedService.autoInjection ? 'Oui' : 'Non'}</Typography>
-
-              <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                Applications associées
-              </Typography>
-              <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
-                {selectedService.applications.map(appId => (
-                  <Chip
-                    key={appId}
-                    label={appId}
-                    size="small"
-                    variant="outlined"
-                  />
-                ))}
-              </Stack>
-
-              <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                Tags
-              </Typography>
-              <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
-                {selectedService.tags.map(tag => (
-                  <Chip
-                    key={tag}
-                    label={tag}
-                    size="small"
-                    variant="outlined"
-                  />
-                ))}
-              </Stack>
-
-              <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                Propriétés
-              </Typography>
-              {Object.entries(selectedService.properties).map(([key, value]) => (
-                <Typography key={key}>
-                  {key}: {value}
-                </Typography>
-              ))}
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Informations générales
+                  </Typography>
+                  <List>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Nom" 
+                        secondary={selectedService.name}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Type" 
+                        secondary={selectedService.type}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Technologie" 
+                        secondary={selectedService.technology}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Statut" 
+                        secondary={selectedService.status}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Mode de monitoring" 
+                        secondary={selectedService.monitoringMode}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Auto-injection" 
+                        secondary={selectedService.autoInjection ? 'Oui' : 'Non'}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Dernière activité" 
+                        secondary={new Date(selectedService.lastSeenTimestamp).toLocaleString()}
+                      />
+                    </ListItem>
+                  </List>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Applications associées
+                  </Typography>
+                  <List>
+                    {selectedService.applications.map((appId, index) => (
+                      <ListItem key={index}>
+                        <ListItemText primary={appId} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Tags
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {selectedService.tags.map((tag, index) => (
+                      <Chip key={index} label={tag} />
+                    ))}
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Propriétés
+                  </Typography>
+                  <List>
+                    {Object.entries(selectedService.properties).map(([key, value]) => (
+                      <ListItem key={key}>
+                        <ListItemText 
+                          primary={key} 
+                          secondary={typeof value === 'object' ? JSON.stringify(value) : value}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Grid>
+              </Grid>
             </Box>
           )}
         </DialogContent>

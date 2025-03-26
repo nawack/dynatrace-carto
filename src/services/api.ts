@@ -174,7 +174,8 @@ export const fetchLinks = async (): Promise<Link[]> => {
   
   response.data.entities.forEach((entity: any) => {
     // Traiter les relations sortantes
-    entity.toRelationships?.forEach((rel: any) => {
+    const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
+    toRelationships.forEach((rel: any) => {
       if (['runs_on', 'HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'].includes(rel.type)) {
         links.push({
           source: entity.entityId,
@@ -190,7 +191,8 @@ export const fetchLinks = async (): Promise<Link[]> => {
     });
 
     // Traiter les relations entrantes
-    entity.fromRelationships?.forEach((rel: any) => {
+    const fromRelationships = Array.isArray(entity.fromRelationships) ? entity.fromRelationships : [];
+    fromRelationships.forEach((rel: any) => {
       if (['runs_on', 'HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'].includes(rel.type)) {
         links.push({
           source: rel.fromEntityId,
@@ -285,7 +287,8 @@ export const fetchApplicationCommunications = async (): Promise<ApplicationCommu
   
   response.data.entities.forEach((entity: any) => {
     // Traiter les communications sortantes
-    entity.fromRelationships?.forEach((rel: any) => {
+    const fromRelationships = Array.isArray(entity.fromRelationships) ? entity.fromRelationships : [];
+    fromRelationships.forEach((rel: any) => {
       if (communicationTypes.includes(rel.type)) {
         const targetApp = rel.toEntityId;
         communications.push({
@@ -301,7 +304,8 @@ export const fetchApplicationCommunications = async (): Promise<ApplicationCommu
     });
 
     // Traiter les communications entrantes
-    entity.toRelationships?.forEach((rel: any) => {
+    const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
+    toRelationships.forEach((rel: any) => {
       if (communicationTypes.includes(rel.type)) {
         const sourceApp = rel.fromEntityId;
         communications.push({
@@ -334,7 +338,8 @@ export const fetchApplicationCommunicationDetails = async (
   
   console.log(`[Dynatrace API] Détails de communication récupérés`);
   const entity = response.data;
-  const rel = entity.fromRelationships?.find((r: any) => r.toEntityId === targetAppId);
+  const relationships = Array.isArray(entity.fromRelationships) ? entity.fromRelationships : [];
+  const rel = relationships.find((r: any) => r.toEntityId === targetAppId);
   
   if (!rel) {
     throw new Error('Relation non trouvée');

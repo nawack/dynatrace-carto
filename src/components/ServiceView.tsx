@@ -29,15 +29,16 @@ import {
   ListItemText
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { Service, fetchServices } from '../services/api';
+import { Service } from '../services/api';
+import { fetchServices } from '../services/api';
+
+const ITEMS_PER_PAGE_OPTIONS = [5, 10, 25, 50];
 
 interface ServiceViewProps {
   services: Service[];
 }
 
-const ITEMS_PER_PAGE_OPTIONS = [10, 20, 50];
-
-const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
+const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -47,22 +48,26 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [services, setServices] = useState<Service[]>(initialServices);
 
   // Récupérer les types uniques
   const uniqueTypes = Array.from(new Set(services.map(service => service.type)));
   // Récupérer les statuts uniques
   const uniqueStatuses = Array.from(new Set(services.map(service => service.status)));
   // Récupérer tous les tags uniques
-  const allTags = Array.from(new Set(services.flatMap(service => service.tags)));
+  const allTags = Array.from(new Set(services.flatMap(service => service.tags || [])));
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        await fetchServices();
-        setLoading(false);
+        setLoading(true);
+        const fetchedServices = await fetchServices();
+        setServices(fetchedServices);
+        setError(null);
       } catch (error) {
         console.error('Erreur lors du chargement des services:', error);
         setError('Erreur lors du chargement des services');
+      } finally {
         setLoading(false);
       }
     };
@@ -75,7 +80,7 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
     const matchesType = !selectedType || service.type === selectedType;
     const matchesStatus = !selectedStatus || service.status === selectedStatus;
     const matchesTags = selectedTags.length === 0 || 
-      selectedTags.every(tag => service.tags.includes(tag));
+      selectedTags.every(tag => service.tags?.includes(tag));
     return matchesType && matchesStatus && matchesTags;
   });
 
@@ -141,7 +146,7 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="h6" gutterBottom>
-        Services
+        Services ({services.length})
       </Typography>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
@@ -236,7 +241,7 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
                   {new Date(service.lastSeenTimestamp).toLocaleString()}
                 </TableCell>
                 <TableCell>
-                  {service.tags.map((tag, index) => (
+                  {service.tags?.map((tag, index) => (
                     <Chip
                       key={index}
                       label={tag}
@@ -338,7 +343,7 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
                     Applications associées
                   </Typography>
                   <List>
-                    {selectedService.applications.map((appId, index) => (
+                    {selectedService.applications?.map((appId, index) => (
                       <ListItem key={index}>
                         <ListItemText primary={appId} />
                       </ListItem>
@@ -350,7 +355,7 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
                     Tags
                   </Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {selectedService.tags.map((tag, index) => (
+                    {selectedService.tags?.map((tag, index) => (
                       <Chip key={index} label={tag} />
                     ))}
                   </Box>
@@ -360,11 +365,11 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services }) => {
                     Propriétés
                   </Typography>
                   <List>
-                    {Object.entries(selectedService.properties).map(([key, value]) => (
+                    {Object.entries(selectedService.properties || {}).map(([key, value]) => (
                       <ListItem key={key}>
                         <ListItemText 
                           primary={key} 
-                          secondary={typeof value === 'object' ? JSON.stringify(value) : value}
+                          secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
                         />
                       </ListItem>
                     ))}

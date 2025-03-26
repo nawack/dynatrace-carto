@@ -84,6 +84,22 @@ export interface ApplicationCommunication {
   throughput: number;
 }
 
+export interface Service {
+  id: string;
+  name: string;
+  type: string;
+  technology: string;
+  status: string;
+  lastSeenTimestamp: number;
+  monitoringMode: string;
+  autoInjection: boolean;
+  applications: string[];
+  tags: string[];
+  properties: {
+    [key: string]: string;
+  };
+}
+
 export const fetchApplications = async (): Promise<Application[]> => {
   console.log('[Dynatrace API] Récupération des applications...');
   const response = await api.get('/api/v2/entities', {
@@ -146,20 +162,52 @@ export const fetchHosts = async (): Promise<Host[]> => {
 
 export const fetchLinks = async (): Promise<Link[]> => {
   console.log('[Dynatrace API] Récupération des liens...');
-  const response = await api.get('/api/v2/topology', {
+  const response = await api.get('/api/v2/entities', {
     params: {
-      entitySelector: 'type("APPLICATION"),type("HOST")',
-      fields: '+properties'
+      entitySelector: 'type("APPLICATION"),type("HOST"),type("SERVICE")',
+      fields: '+properties,+toRelationships,+fromRelationships'
     }
   });
   
-  console.log(`[Dynatrace API] ${response.data.relationships.length} liens récupérés`);
-  return response.data.relationships.map((rel: any) => ({
-    source: rel.fromEntityId,
-    target: rel.toEntityId,
-    type: rel.type,
-    properties: rel.properties || {}
-  }));
+  console.log(`[Dynatrace API] ${response.data.entities.length} entités récupérées`);
+  const links: Link[] = [];
+  
+  response.data.entities.forEach((entity: any) => {
+    // Traiter les relations sortantes
+    entity.toRelationships?.forEach((rel: any) => {
+      if (['runs_on', 'HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'].includes(rel.type)) {
+        links.push({
+          source: entity.entityId,
+          target: rel.toEntityId,
+          type: rel.type,
+          properties: {
+            ...rel.properties,
+            sourceType: entity.type,
+            targetType: rel.toEntityType
+          }
+        });
+      }
+    });
+
+    // Traiter les relations entrantes
+    entity.fromRelationships?.forEach((rel: any) => {
+      if (['runs_on', 'HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'].includes(rel.type)) {
+        links.push({
+          source: rel.fromEntityId,
+          target: entity.entityId,
+          type: rel.type,
+          properties: {
+            ...rel.properties,
+            sourceType: rel.fromEntityType,
+            targetType: entity.type
+          }
+        });
+      }
+    });
+  });
+  
+  console.log(`[Dynatrace API] ${links.length} liens extraits`);
+  return links;
 };
 
 export const fetchHostById = async (id: string): Promise<Host> => {
@@ -223,24 +271,42 @@ export const fetchApplicationById = async (id: string): Promise<Application> => 
 
 export const fetchApplicationCommunications = async (): Promise<ApplicationCommunication[]> => {
   console.log('[Dynatrace API] Récupération des communications entre applications...');
-  const response = await api.get('/api/v2/topology', {
+  const response = await api.get('/api/v2/entities', {
     params: {
       entitySelector: 'type("APPLICATION")',
       fields: '+properties,+toRelationships,+fromRelationships'
     }
   });
   
-  console.log(`[Dynatrace API] Topologie des applications récupérée`);
+  console.log(`[Dynatrace API] ${response.data.entities.length} applications récupérées`);
   
   const communications: ApplicationCommunication[] = [];
+  const communicationTypes = ['HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'];
   
   response.data.entities.forEach((entity: any) => {
+    // Traiter les communications sortantes
     entity.fromRelationships?.forEach((rel: any) => {
-      if (rel.type === 'HTTP' || rel.type === 'REST' || rel.type === 'SOAP' || rel.type === 'gRPC') {
+      if (communicationTypes.includes(rel.type)) {
         const targetApp = rel.toEntityId;
         communications.push({
           sourceApp: entity.entityId,
           targetApp: targetApp,
+          type: rel.type,
+          calls: parseInt(rel.properties?.calls || '0'),
+          responseTime: parseFloat(rel.properties?.responseTime || '0'),
+          errorRate: parseFloat(rel.properties?.errorRate || '0'),
+          throughput: parseFloat(rel.properties?.throughput || '0')
+        });
+      }
+    });
+
+    // Traiter les communications entrantes
+    entity.toRelationships?.forEach((rel: any) => {
+      if (communicationTypes.includes(rel.type)) {
+        const sourceApp = rel.fromEntityId;
+        communications.push({
+          sourceApp: sourceApp,
+          targetApp: entity.entityId,
           type: rel.type,
           calls: parseInt(rel.properties?.calls || '0'),
           responseTime: parseFloat(rel.properties?.responseTime || '0'),
@@ -260,14 +326,20 @@ export const fetchApplicationCommunicationDetails = async (
   targetAppId: string
 ): Promise<ApplicationCommunication> => {
   console.log(`[Dynatrace API] Récupération des détails de communication entre ${sourceAppId} et ${targetAppId}...`);
-  const response = await api.get(`/api/v2/topology/${sourceAppId}/${targetAppId}`, {
+  const response = await api.get(`/api/v2/entities/${sourceAppId}`, {
     params: {
-      fields: '+properties'
+      fields: '+properties,+fromRelationships'
     }
   });
   
   console.log(`[Dynatrace API] Détails de communication récupérés`);
-  const rel = response.data;
+  const entity = response.data;
+  const rel = entity.fromRelationships?.find((r: any) => r.toEntityId === targetAppId);
+  
+  if (!rel) {
+    throw new Error('Relation non trouvée');
+  }
+  
   return {
     sourceApp: sourceAppId,
     targetApp: targetAppId,
@@ -277,4 +349,34 @@ export const fetchApplicationCommunicationDetails = async (
     errorRate: parseFloat(rel.properties?.errorRate || '0'),
     throughput: parseFloat(rel.properties?.throughput || '0')
   };
+};
+
+export const fetchServices = async (): Promise<Service[]> => {
+  console.log('[Dynatrace API] Récupération des services...');
+  const response = await api.get('/api/v2/entities', {
+    params: {
+      entitySelector: 'type("SERVICE")',
+      fields: '+properties,+tags,+toRelationships,+fromRelationships'
+    }
+  });
+  
+  console.log(`[Dynatrace API] ${response.data.entities.length} services récupérés`);
+  return response.data.entities.map((entity: any) => {
+    const properties = entity.properties || {};
+    return {
+      id: entity.entityId,
+      name: entity.displayName,
+      type: entity.type,
+      technology: properties.technology || '',
+      status: properties.status || 'unknown',
+      lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
+      monitoringMode: properties.monitoringMode || 'unknown',
+      autoInjection: properties.autoInjection === 'true',
+      applications: entity.toRelationships
+        ?.filter((rel: any) => rel.type === 'runs_on')
+        .map((rel: any) => rel.toEntityId) || [],
+      tags: entity.tags || [],
+      properties: properties
+    };
+  });
 }; 

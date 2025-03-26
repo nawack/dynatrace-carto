@@ -10,8 +10,8 @@ import {
   LinearProgress,
   Typography
 } from '@mui/material';
-import { HostView, ApplicationView, ApplicationCommunicationView } from './components';
-import { fetchApplications, fetchHosts, fetchLinks, Application, Host, Link } from './services/api';
+import { HostView, ApplicationView, ApplicationCommunicationView, ServiceView } from './components';
+import { fetchApplications, fetchHosts, fetchLinks, Application, Host, Link, ApplicationCommunication, Service, fetchServices, fetchApplicationCommunications } from './services/api';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -82,23 +82,29 @@ const theme = createTheme({
 
 function App() {
   const [value, setValue] = useState(0);
-  const [applications, setApplications] = useState<Application[]>([]);
   const [hosts, setHosts] = useState<Host[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [links, setLinks] = useState<Link[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [communications, setCommunications] = useState<ApplicationCommunication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const loadData = async () => {
       try {
-        const [appsData, hostsData, linksData] = await Promise.all([
-          fetchApplications(),
+        const [hostsData, applicationsData, linksData, servicesData, communicationsData] = await Promise.all([
           fetchHosts(),
-          fetchLinks()
+          fetchApplications(),
+          fetchLinks(),
+          fetchServices(),
+          fetchApplicationCommunications()
         ]);
-        setApplications(appsData);
         setHosts(hostsData);
+        setApplications(applicationsData);
         setLinks(linksData);
+        setServices(servicesData);
+        setCommunications(communicationsData);
       } catch (error) {
         console.error('Erreur lors du chargement des données:', error);
         setError('Erreur lors du chargement des données');
@@ -107,7 +113,7 @@ function App() {
       }
     };
 
-    fetchData();
+    loadData();
   }, []);
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -147,6 +153,7 @@ function App() {
             <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
               <Tab label="Hôtes" />
               <Tab label="Applications" />
+              <Tab label="Services" />
               <Tab label="Communications" />
             </Tabs>
           </Box>
@@ -157,6 +164,9 @@ function App() {
             <ApplicationView applications={applications} hosts={hosts} links={links} />
           </TabPanel>
           <TabPanel value={value} index={2}>
+            <ServiceView services={services} />
+          </TabPanel>
+          <TabPanel value={value} index={3}>
             <ApplicationCommunicationView applications={applications} />
           </TabPanel>
         </Box>

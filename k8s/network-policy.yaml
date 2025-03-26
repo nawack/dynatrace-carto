@@ -11,9 +11,14 @@ spec:
   egress:
   - to:
     - ipBlock:
-        cidr: 10.233.28.233/32
+        cidr: 10.0.0.0/8
     ports:
     - protocol: TCP
       port: 443
+  - to:
+    - namespaceSelector: {}
+    ports:
     - protocol: UDP
+      port: 53
+    - protocol: TCP
       port: 53

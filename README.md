@@ -4,7 +4,7 @@ Application React pour la cartographie des applications Dynatrace. Elle permet d
 - Les hôtes et leurs métriques
 - Les applications et leurs dépendances
 - Les services et leurs relations
-- Les processus et leurs relations
+- Les processus (groupes et instances) et leurs relations
 - Les liens entre hôtes
 - Les liens entre services
 - Les liens entre processus
@@ -53,7 +53,7 @@ Application React pour la cartographie des applications Dynatrace. Elle permet d
 - Hôte associé
 - Technologies logicielles
 - Méthode de détection
-- Type de processus
+- Type de processus (PROCESS_GROUP ou PROCESS_GROUP_INSTANCE)
 - Ligne de commande
 - PID
 - Métriques de performance
@@ -208,8 +208,8 @@ src/
 - Hôtes associés
 
 ### Vue des processus
-- Liste des processus avec leurs propriétés
-- Filtrage par type et statut
+- Liste des processus (groupes et instances) avec leurs propriétés
+- Filtrage par type (PROCESS_GROUP ou PROCESS_GROUP_INSTANCE) et statut
 - Détails des métriques système
 - Hôte associé
 
@@ -230,6 +230,19 @@ src/
 - Filtrage par type et statut
 - Métriques réseau (bandwidth, latency, packetLoss)
 - Détails des connexions
+
+## Données non affichées dans l'IHM
+
+### Liens
+- Types des entités source et cible
+- Timestamp de dernière observation
+- Débit de données (throughput)
+
+### Entités (Hôtes, Services, Applications)
+- Propriétés supplémentaires
+- Tags associés
+
+Ces données sont bien récupérées de l'API Dynatrace mais ne sont pas actuellement affichées dans l'interface utilisateur. Elles pourraient être ajoutées dans de futures versions.
 
 ## Contribution
 

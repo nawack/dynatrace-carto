@@ -420,7 +420,7 @@ export const fetchProcesses = async (): Promise<Process[]> => {
   console.log('[Dynatrace API] Récupération des processus...');
   const response = await api.get('/api/v2/entities', {
     params: {
-      entitySelector: 'type("PROCESS")',
+      entitySelector: 'type("PROCESS_GROUP"),type("PROCESS_GROUP_INSTANCE")',
       fields: '+properties,+tags,+toRelationships,+fromRelationships'
     }
   });

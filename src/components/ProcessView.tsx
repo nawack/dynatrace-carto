@@ -131,6 +131,112 @@ const ProcessView: React.FC<ProcessViewProps> = ({ processes: initialProcesses }
     setSelectedProcess(null);
   };
 
+  const renderProcessDetails = (process: Process) => (
+    <Box>
+      <Typography variant="h6" gutterBottom>Informations générales</Typography>
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>ID:</strong> {process.id}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>Nom:</strong> {process.name}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>Type:</strong> {process.type}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>Statut:</strong> {process.status}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>Mode de surveillance:</strong> {process.monitoringMode}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>Injection automatique:</strong> {process.autoInjection ? 'Oui' : 'Non'}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>Hôte:</strong> {process.host}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>Dernière observation:</strong> {new Date(process.lastSeenTimestamp).toLocaleString()}
+          </Typography>
+        </Grid>
+      </Grid>
+
+      <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Informations techniques</Typography>
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>PID:</strong> {process.pid}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>Type de processus:</strong> {process.processType}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>Méthode de détection:</strong> {process.detectionMethod}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <Typography variant="body2">
+            <strong>Ligne de commande:</strong> {process.commandLine}
+          </Typography>
+        </Grid>
+      </Grid>
+
+      {process.softwareTechnologies.length > 0 && (
+        <>
+          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Technologies logicielles</Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {process.softwareTechnologies.map((tech, index) => (
+              <Chip key={index} label={tech} size="small" />
+            ))}
+          </Box>
+        </>
+      )}
+
+      {process.tags.length > 0 && (
+        <>
+          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Tags</Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {process.tags.map((tag, index) => (
+              <Chip key={index} label={tag} size="small" />
+            ))}
+          </Box>
+        </>
+      )}
+
+      <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Propriétés supplémentaires</Typography>
+      <Table size="small">
+        <TableBody>
+          {Object.entries(process.properties).map(([key, value]) => (
+            <TableRow key={key}>
+              <TableCell component="th" scope="row">{key}</TableCell>
+              <TableCell>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Box>
+  );
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
@@ -286,72 +392,7 @@ const ProcessView: React.FC<ProcessViewProps> = ({ processes: initialProcesses }
         </DialogTitle>
         <DialogContent>
           {selectedProcess && (
-            <Box sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Informations générales
-                  </Typography>
-                  <List>
-                    <ListItem>
-                      <ListItemText 
-                        primary="Nom" 
-                        secondary={selectedProcess.name}
-                      />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemText 
-                        primary="Type" 
-                        secondary={selectedProcess.type}
-                      />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemText 
-                        primary="Statut" 
-                        secondary={selectedProcess.status}
-                      />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemText 
-                        primary="Mode de surveillance" 
-                        secondary={selectedProcess.monitoringMode}
-                      />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemText 
-                        primary="Dernière activité" 
-                        secondary={new Date(selectedProcess.lastSeenTimestamp).toLocaleString()}
-                      />
-                    </ListItem>
-                  </List>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Tags
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {selectedProcess.tags.map((tag, index) => (
-                      <Chip key={index} label={tag} size="small" />
-                    ))}
-                  </Box>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Propriétés
-                  </Typography>
-                  <List>
-                    {Object.entries(selectedProcess.properties || {}).map(([key, value]) => (
-                      <ListItem key={key}>
-                        <ListItemText 
-                          primary={key} 
-                          secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                </Grid>
-              </Grid>
-            </Box>
+            renderProcessDetails(selectedProcess)
           )}
         </DialogContent>
       </Dialog>

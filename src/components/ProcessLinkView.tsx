@@ -33,6 +33,7 @@ import {
 import { Process, Link, fetchProcesses, fetchLinks } from '../services/api';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
+import InfoIcon from '@mui/icons-material/Info';
 
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 25, 50, 100];
 
@@ -42,12 +43,22 @@ interface ProcessLinkViewProps {
 
 interface ProcessLink {
   id: string;
-  sourceProcess: string;
-  targetProcess: string;
+  source: string;
+  target: string;
   type: string;
   status: string;
   lastSeenTimestamp: number;
-  properties: Record<string, any>;
+  properties: {
+    status?: string;
+    lastSeenTimestamp?: string;
+    bandwidth?: string;
+    latency?: string;
+    packetLoss?: string;
+    calls?: string;
+    responseTime?: string;
+    errorRate?: string;
+    throughput?: string;
+  };
 }
 
 const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialProcesses }) => {
@@ -55,8 +66,8 @@ const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialPro
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [selectedType, setSelectedType] = useState<string>('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedLink, setSelectedLink] = useState<ProcessLink | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [processLinks, setProcessLinks] = useState<ProcessLink[]>([]);
@@ -77,8 +88,8 @@ const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialPro
           .filter((link: Link) => link.properties.sourceType === 'PROCESS' && link.properties.targetType === 'PROCESS')
           .map((link: Link) => ({
             id: `${link.source}-${link.target}`,
-            sourceProcess: link.source,
-            targetProcess: link.target,
+            source: link.source,
+            target: link.target,
             type: link.type,
             status: link.properties.status || 'unknown',
             lastSeenTimestamp: parseInt(link.properties.lastSeenTimestamp || '0'),
@@ -113,10 +124,23 @@ const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialPro
   // Récupérer les statuts uniques
   const uniqueStatuses = Array.from(new Set(processLinks.map(link => link.status)));
 
+  const typeOptions = [
+    { value: 'PROCESS_GROUP', label: 'Groupe de processus' },
+    { value: 'PROCESS_GROUP_INSTANCE', label: 'Instance de processus' }
+  ];
+
   // Filtrer les liens selon les critères
   const filteredLinks = processLinks.filter(link => {
-    const matchesType = !selectedType || link.type === selectedType;
-    const matchesStatus = !selectedStatus || link.status === selectedStatus;
+    const sourceProcess = processes.find(p => p.id === link.source);
+    const targetProcess = processes.find(p => p.id === link.target);
+    
+    if (!sourceProcess || !targetProcess) return false;
+    
+    const matchesType = selectedType === 'all' || 
+      (sourceProcess.type === selectedType && targetProcess.type === selectedType);
+    const matchesStatus = selectedStatus === 'all' || 
+      link.properties.status === selectedStatus;
+    
     return matchesType && matchesStatus;
   });
 
@@ -170,6 +194,12 @@ const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialPro
     setSelectedLink(null);
   };
 
+  const getStatusColor = (status: string) => {
+    if (status === 'ONLINE') return 'success';
+    if (status === 'OFFLINE') return 'error';
+    return 'warning';
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
@@ -209,9 +239,11 @@ const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialPro
             label="Type"
             onChange={handleTypeChange}
           >
-            <MenuItem value="">Tous</MenuItem>
-            {uniqueTypes.map(type => (
-              <MenuItem key={type} value={type}>{type}</MenuItem>
+            <MenuItem value="all">Tous</MenuItem>
+            {typeOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -223,9 +255,11 @@ const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialPro
             label="Statut"
             onChange={handleStatusChange}
           >
-            <MenuItem value="">Tous</MenuItem>
-            {uniqueStatuses.map(status => (
-              <MenuItem key={status} value={status}>{status}</MenuItem>
+            <MenuItem value="all">Tous</MenuItem>
+            {uniqueStatuses.map((status) => (
+              <MenuItem key={status} value={status}>
+                {status}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -237,8 +271,10 @@ const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialPro
             label="Par page"
             onChange={handleItemsPerPageChange}
           >
-            {ITEMS_PER_PAGE_OPTIONS.map(option => (
-              <MenuItem key={option} value={option}>{option}</MenuItem>
+            {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -249,38 +285,43 @@ const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialPro
           <TableHead>
             <TableRow>
               <TableCell>Processus source</TableCell>
+              <TableCell>Type source</TableCell>
               <TableCell>Processus cible</TableCell>
+              <TableCell>Type cible</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Statut</TableCell>
-              <TableCell>Dernière activité</TableCell>
+              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {paginatedLinks.map((link) => (
-              <TableRow 
-                key={link.id}
-                onClick={() => handleRowClick(link)}
-                sx={{ cursor: 'pointer' }}
-              >
-                <TableCell>{getProcessName(link.sourceProcess)}</TableCell>
-                <TableCell>{getProcessName(link.targetProcess)}</TableCell>
-                <TableCell>
-                  <Chip label={link.type} size="small" />
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    label={link.status}
-                    color={link.status === 'ONLINE' ? 'success' : 
-                           link.status === 'OFFLINE' ? 'error' : 
-                           'warning'}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  {new Date(link.lastSeenTimestamp).toLocaleString()}
-                </TableCell>
-              </TableRow>
-            ))}
+            {paginatedLinks.map((link, index) => {
+              const sourceProcess = processes.find(p => p.id === link.source);
+              const targetProcess = processes.find(p => p.id === link.target);
+              
+              if (!sourceProcess || !targetProcess) return null;
+              
+              return (
+                <TableRow key={index}>
+                  <TableCell>{sourceProcess.name}</TableCell>
+                  <TableCell>{sourceProcess.type}</TableCell>
+                  <TableCell>{targetProcess.name}</TableCell>
+                  <TableCell>{targetProcess.type}</TableCell>
+                  <TableCell>{link.type}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={link.properties.status || 'unknown'} 
+                      color={getStatusColor(link.properties.status || 'unknown')} 
+                      size="small" 
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton size="small" onClick={() => handleRowClick(link)}>
+                      <InfoIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
@@ -329,13 +370,13 @@ const ProcessLinkView: React.FC<ProcessLinkViewProps> = ({ processes: initialPro
                     <ListItem>
                       <ListItemText 
                         primary="Processus source" 
-                        secondary={getProcessName(selectedLink.sourceProcess)}
+                        secondary={getProcessName(selectedLink.source)}
                       />
                     </ListItem>
                     <ListItem>
                       <ListItemText 
                         primary="Processus cible" 
-                        secondary={getProcessName(selectedLink.targetProcess)}
+                        secondary={getProcessName(selectedLink.target)}
                       />
                     </ListItem>
                     <ListItem>

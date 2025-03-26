@@ -186,7 +186,7 @@ export const fetchLinks = async (): Promise<Link[]> => {
   console.log('[Dynatrace API] Récupération des liens...');
   const response = await api.get('/api/v2/entities', {
     params: {
-      entitySelector: 'type("APPLICATION"),type("HOST"),type("SERVICE"),type("PROCESS")',
+      entitySelector: 'type("APPLICATION"),type("HOST"),type("SERVICE"),type("PROCESS_GROUP"),type("PROCESS_GROUP_INSTANCE")',
       fields: '+properties,+tags,+toRelationships,+fromRelationships'
     }
   });
@@ -214,7 +214,8 @@ export const fetchLinks = async (): Promise<Link[]> => {
       // Liens réseau (entre hôtes ou entre processus)
       if (networkLinks.includes(linkType)) {
         isValidLink = (sourceType === 'HOST' && targetType === 'HOST') ||
-                     (sourceType === 'PROCESS' && targetType === 'PROCESS');
+                     (sourceType === 'PROCESS_GROUP' && targetType === 'PROCESS_GROUP') ||
+                     (sourceType === 'PROCESS_GROUP_INSTANCE' && targetType === 'PROCESS_GROUP_INSTANCE');
       }
       // Liens d'application (entre services ou vers des applications)
       else if (applicationLinks.includes(linkType)) {
@@ -226,11 +227,13 @@ export const fetchLinks = async (): Promise<Link[]> => {
       else if (runsOnLinks.includes(linkType)) {
         isValidLink = (sourceType === 'APPLICATION' && targetType === 'HOST') ||
                      (sourceType === 'SERVICE' && targetType === 'HOST') ||
-                     (sourceType === 'PROCESS' && targetType === 'HOST');
+                     (sourceType === 'PROCESS_GROUP' && targetType === 'HOST') ||
+                     (sourceType === 'PROCESS_GROUP_INSTANCE' && targetType === 'HOST');
       }
       // Liens entre processus
       else if (processLinks.includes(linkType)) {
-        isValidLink = (sourceType === 'PROCESS' && targetType === 'PROCESS');
+        isValidLink = (sourceType === 'PROCESS_GROUP' && targetType === 'PROCESS_GROUP') ||
+                     (sourceType === 'PROCESS_GROUP_INSTANCE' && targetType === 'PROCESS_GROUP_INSTANCE');
       }
 
       if (isValidLink) {
@@ -269,7 +272,8 @@ export const fetchLinks = async (): Promise<Link[]> => {
       // Liens réseau (entre hôtes ou entre processus)
       if (networkLinks.includes(linkType)) {
         isValidLink = (sourceType === 'HOST' && targetType === 'HOST') ||
-                     (sourceType === 'PROCESS' && targetType === 'PROCESS');
+                     (sourceType === 'PROCESS_GROUP' && targetType === 'PROCESS_GROUP') ||
+                     (sourceType === 'PROCESS_GROUP_INSTANCE' && targetType === 'PROCESS_GROUP_INSTANCE');
       }
       // Liens d'application (entre services ou vers des applications)
       else if (applicationLinks.includes(linkType)) {
@@ -281,11 +285,13 @@ export const fetchLinks = async (): Promise<Link[]> => {
       else if (runsOnLinks.includes(linkType)) {
         isValidLink = (sourceType === 'APPLICATION' && targetType === 'HOST') ||
                      (sourceType === 'SERVICE' && targetType === 'HOST') ||
-                     (sourceType === 'PROCESS' && targetType === 'HOST');
+                     (sourceType === 'PROCESS_GROUP' && targetType === 'HOST') ||
+                     (sourceType === 'PROCESS_GROUP_INSTANCE' && targetType === 'HOST');
       }
       // Liens entre processus
       else if (processLinks.includes(linkType)) {
-        isValidLink = (sourceType === 'PROCESS' && targetType === 'PROCESS');
+        isValidLink = (sourceType === 'PROCESS_GROUP' && targetType === 'PROCESS_GROUP') ||
+                     (sourceType === 'PROCESS_GROUP_INSTANCE' && targetType === 'PROCESS_GROUP_INSTANCE');
       }
 
       if (isValidLink) {

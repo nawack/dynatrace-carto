@@ -77,21 +77,6 @@ export interface Link {
   };
 }
 
-export interface ApplicationCommunication {
-  id: string;
-  sourceApp: string;
-  targetApp: string;
-  type: string;
-  status: string;
-  calls: number;
-  responseTime: number;
-  errorRate: number;
-  throughput: number;
-  lastSeenTimestamp: number;
-  tags: string[];
-  properties: Record<string, any>;
-}
-
 export interface Service {
   id: string;
   name: string;
@@ -326,106 +311,6 @@ export const fetchApplicationById = async (id: string): Promise<Application> => 
     status: properties.status || 'unknown',
     lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
     properties: properties
-  };
-};
-
-export const fetchApplicationCommunications = async (): Promise<ApplicationCommunication[]> => {
-  console.log('[Dynatrace API] Récupération des communications entre applications...');
-  const response = await api.get('/api/v2/entities', {
-    params: {
-      entitySelector: 'type("APPLICATION")',
-      fields: '+properties,+toRelationships,+fromRelationships'
-    }
-  });
-  
-  console.log(`[Dynatrace API] ${response.data.entities.length} applications récupérées`);
-  
-  const communications: ApplicationCommunication[] = [];
-  const communicationTypes = ['HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'];
-  
-  response.data.entities.forEach((entity: any) => {
-    // Traiter les communications sortantes
-    const fromRelationships = Array.isArray(entity.fromRelationships) ? entity.fromRelationships : [];
-    fromRelationships.forEach((rel: any) => {
-      if (communicationTypes.includes(rel.type)) {
-        const targetApp = rel.toEntityId;
-        communications.push({
-          id: '',
-          sourceApp: entity.entityId,
-          targetApp: targetApp,
-          type: rel.type,
-          status: '',
-          calls: parseInt(rel.properties?.calls || '0'),
-          responseTime: parseFloat(rel.properties?.responseTime || '0'),
-          errorRate: parseFloat(rel.properties?.errorRate || '0'),
-          throughput: parseFloat(rel.properties?.throughput || '0'),
-          lastSeenTimestamp: 0,
-          tags: [],
-          properties: {}
-        });
-      }
-    });
-
-    // Traiter les communications entrantes
-    const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
-    toRelationships.forEach((rel: any) => {
-      if (communicationTypes.includes(rel.type)) {
-        const sourceApp = rel.fromEntityId;
-        communications.push({
-          id: '',
-          sourceApp: sourceApp,
-          targetApp: entity.entityId,
-          type: rel.type,
-          status: '',
-          calls: parseInt(rel.properties?.calls || '0'),
-          responseTime: parseFloat(rel.properties?.responseTime || '0'),
-          errorRate: parseFloat(rel.properties?.errorRate || '0'),
-          throughput: parseFloat(rel.properties?.throughput || '0'),
-          lastSeenTimestamp: 0,
-          tags: [],
-          properties: {}
-        });
-      }
-    });
-  });
-  
-  console.log(`[Dynatrace API] ${communications.length} communications traitées`);
-  return communications;
-};
-
-export const fetchApplicationCommunicationDetails = async (
-  sourceAppId: string,
-  targetAppId: string
-): Promise<ApplicationCommunication> => {
-  console.log(`[Dynatrace API] Récupération des détails de communication entre ${sourceAppId} et ${targetAppId}...`);
-  const response = await api.get(`/api/v2/entities/${sourceAppId}`, {
-    params: {
-      fields: '+properties,+fromRelationships'
-    }
-  });
-  
-  console.log(`[Dynatrace API] Détails de communication récupérés`);
-  const entity = response.data;
-  const relationships = Array.isArray(entity.fromRelationships) ? entity.fromRelationships : [];
-  const rel = relationships.find((r: any) => r.toEntityId === targetAppId);
-  
-  if (!rel) {
-    throw new Error('Relation non trouvée');
-  }
-  
-  return {
-    id: '',
-    sourceApp: sourceAppId,
-    targetApp: targetAppId,
-    type: rel.type,
-    status: '',
-    calls: parseInt(rel.properties?.calls || '0'),
-    responseTime: parseFloat(rel.properties?.responseTime || '0'),
-    errorRate: parseFloat(rel.properties?.errorRate || '0'),
-    throughput: parseFloat(rel.properties?.throughput || '0'),
-    lastSeenTimestamp: 0,
-    tags: [],
-    properties: {}
   };
 };
 

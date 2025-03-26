@@ -12,8 +12,8 @@ import {
   AppBar,
   Alert
 } from '@mui/material';
-import { HostView, ApplicationView, ApplicationCommunicationView, ServiceView, ProcessView, HostLinkView, ServiceLinkView, ProcessLinkView } from './components';
-import { fetchApplications, fetchHosts, fetchLinks, Application, Host, Link, ApplicationCommunication, Service, fetchServices, fetchApplicationCommunications, fetchProcesses } from './services/api';
+import { HostView, ApplicationView, ServiceView, ProcessView, HostLinkView, ServiceLinkView, ProcessLinkView } from './components';
+import { fetchApplications, fetchHosts, fetchLinks, Application, Host, Link, Service, Process, fetchServices, fetchProcesses } from './services/api';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -83,15 +83,14 @@ const theme = createTheme({
 });
 
 function App() {
-  const [value, setValue] = useState(0);
-  const [hosts, setHosts] = useState<Host[]>([]);
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [links, setLinks] = useState<Link[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [communications, setCommunications] = useState<ApplicationCommunication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [value, setValue] = useState(0);
+  const [hosts, setHosts] = useState<Host[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [processes, setProcesses] = useState<Process[]>([]);
+  const [links, setLinks] = useState<Link[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -126,45 +125,40 @@ function App() {
   };
 
   if (loading) {
-    return <LinearProgress />;
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <LinearProgress />
+      </Box>
+    );
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography color="error">{error}</Typography>
-      </Box>
+      <Container>
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      </Container>
     );
   }
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container maxWidth="xl">
-        <Box sx={{ width: '100%', mt: 4 }}>
-          <Typography 
-            variant="h4" 
-            component="h1" 
-            gutterBottom 
-            sx={{ 
-              color: 'primary.main',
-              fontWeight: 'bold',
-              mb: 3
-            }}
-          >
-            Cartographie Dynatrace
-          </Typography>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
-              <Tab label="Hôtes" />
-              <Tab label="Services" />
-              <Tab label="Applications" />
-              <Tab label="Processus" />
-              <Tab label="Liens hôtes" />
-              <Tab label="Liens services" />
-              <Tab label="Liens processus" />
-            </Tabs>
-          </Box>
+      <Box sx={{ flexGrow: 1 }}>
+        <AppBar position="static">
+          <Tabs value={value} onChange={handleChange} aria-label="navigation tabs">
+            <Tab label="Hôtes" />
+            <Tab label="Services" />
+            <Tab label="Applications" />
+            <Tab label="Processus" />
+            <Tab label="Liens hôtes" />
+            <Tab label="Liens services" />
+            <Tab label="Liens processus" />
+          </Tabs>
+        </AppBar>
+
+        <Container maxWidth="xl" sx={{ mt: 4 }}>
           <TabPanel value={value} index={0}>
             <HostView hosts={hosts} links={links} applications={applications} />
           </TabPanel>
@@ -186,8 +180,8 @@ function App() {
           <TabPanel value={value} index={6}>
             <ProcessLinkView processes={processes} />
           </TabPanel>
-        </Box>
-      </Container>
+        </Container>
+      </Box>
     </ThemeProvider>
   );
 }

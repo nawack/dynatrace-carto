@@ -4,18 +4,28 @@ Application React pour la cartographie des applications Dynatrace. Elle permet d
 - Les hôtes et leurs métriques
 - Les applications et leurs dépendances
 - Les services et leurs relations
-- Les communications entre applications
+- Les processus et leurs relations
+- Les liens entre hôtes
+- Les liens entre services
+- Les liens entre processus
 
 ## Fonctionnalités
 
 - Visualisation des hôtes avec leurs métriques (CPU, mémoire, disque)
 - Cartographie des applications et leurs relations
 - Gestion des services et leurs dépendances
-- Analyse des communications entre applications avec différents types (HTTP, REST, SOAP, gRPC, DATABASE, MESSAGING)
+- Visualisation des processus et leurs relations
+- Analyse des liens entre entités avec différents types :
+  - Liens entre hôtes (NETWORK)
+  - Liens entre services (HTTP, REST, SOAP, gRPC, DATABASE, MESSAGING)
+  - Liens entre processus (NETWORK)
 - Interface utilisateur moderne avec thème sombre
 - Visualisation interactive avec graphes et diagrammes
 - Filtrage et recherche avancés pour chaque vue
 - Export des données au format JSON
+- Métriques détaillées pour chaque type de lien :
+  - Métriques réseau (bandwidth, latency, packetLoss)
+  - Métriques de performance (calls, responseTime, errorRate, throughput)
 
 ## Prérequis
 
@@ -98,64 +108,75 @@ docker run -p 3000:80 dynatrace-carto:latest
 kubectl create secret generic dynatrace-carto-secrets \
   --from-literal=REACT_APP_DYNATRACE_URL=https://your-environment.live.dynatrace.com \
   --from-literal=REACT_APP_DYNATRACE_API_TOKEN=your-token \
-  --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-2. Le secret est automatiquement injecté dans le pod via le fichier `deployment.yaml`
+2. Déployez l'application avec Kustomize :
+```bash
+kubectl apply -k k8s/overlays/production
+```
 
 ## Structure du projet
 
 ```
 src/
 ├── components/           # Composants React
-│   ├── ApplicationView.tsx
-│   ├── ApplicationCommunicationView.tsx
-│   ├── HostView.tsx
-│   ├── ServiceView.tsx
-│   └── index.ts
-├── services/            # Services API
-│   └── api.ts
+│   ├── HostView.tsx     # Vue des hôtes
+│   ├── ServiceView.tsx  # Vue des services
+│   ├── ApplicationView.tsx # Vue des applications
+│   ├── ProcessView.tsx  # Vue des processus
+│   ├── HostLinkView.tsx # Vue des liens entre hôtes
+│   ├── ServiceLinkView.tsx # Vue des liens entre services
+│   └── ProcessLinkView.tsx # Vue des liens entre processus
+├── services/            # Services et API
+│   └── api.ts          # Fonctions d'appel API
 ├── config/             # Configuration
-│   └── api.ts
-└── App.tsx             # Point d'entrée de l'application
+│   └── api.ts          # Configuration de l'API
+└── App.tsx             # Composant principal
 ```
 
-## Fonctionnalités détaillées
+## Fonctionnalités par vue
 
-### Vue Hôtes
-- Liste des hôtes avec leurs métriques système
-- Filtrage par type, statut et tags
-- Détails des applications exécutées
-- Visualisation des métriques en temps réel
+### Vue des hôtes
+- Liste des hôtes avec leurs métriques
+- Filtrage par type et statut
+- Détails des métriques système
+- Applications associées
 
-### Vue Applications
-- Liste des applications avec leurs dépendances
-- Filtrage par statut des hôtes et tags
-- Détails des hôtes associés
-- Export des données
-
-### Vue Services
+### Vue des services
 - Liste des services avec leurs propriétés
-- Filtrage par type, statut et tags
-- Détails des applications associées
-- Visualisation des métriques de service
+- Filtrage par type et technologie
+- Détails des métriques de performance
+- Applications associées
 
-### Vue Communications
-- Liste des communications entre applications
-- Filtrage par application source/cible et type
-- Métriques de performance (temps de réponse, taux d'erreur)
-- Seuil d'erreur configurable
-- Export des données
+### Vue des applications
+- Liste des applications avec leurs propriétés
+- Filtrage par type et statut
+- Détails des dépendances
+- Hôtes associés
 
-## Types de relations supportés
+### Vue des processus
+- Liste des processus avec leurs propriétés
+- Filtrage par type et statut
+- Détails des métriques système
+- Hôte associé
 
-- `runs_on` : Relation entre applications/services et hôtes
-- `HTTP` : Communications HTTP entre applications
-- `REST` : Appels REST entre applications
-- `SOAP` : Communications SOAP
-- `gRPC` : Communications gRPC
-- `DATABASE` : Accès aux bases de données
-- `MESSAGING` : Communications via messagerie
+### Vue des liens entre hôtes
+- Liste des liens réseau entre hôtes
+- Filtrage par type et statut
+- Métriques réseau (bandwidth, latency, packetLoss)
+- Détails des connexions
+
+### Vue des liens entre services
+- Liste des liens entre services
+- Filtrage par type et statut
+- Métriques de performance (calls, responseTime, errorRate, throughput)
+- Détails des communications
+
+### Vue des liens entre processus
+- Liste des liens réseau entre processus
+- Filtrage par type et statut
+- Métriques réseau (bandwidth, latency, packetLoss)
+- Détails des connexions
 
 ## Contribution
 

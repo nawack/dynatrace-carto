@@ -144,6 +144,17 @@ const ApplicationView: React.FC<ApplicationViewProps> = ({ applications: initial
     setSelectedApplication(null);
   };
 
+  const handleExportJson = () => {
+    const dataStr = JSON.stringify(filteredApplications, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = 'applications.json';
+
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
@@ -162,9 +173,18 @@ const ApplicationView: React.FC<ApplicationViewProps> = ({ applications: initial
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Applications ({filteredApplications.length})
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6" gutterBottom>
+          Applications ({filteredApplications.length})
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportJson}
+        >
+          Exporter JSON
+        </Button>
+      </Box>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <FormControl sx={{ minWidth: 200 }}>

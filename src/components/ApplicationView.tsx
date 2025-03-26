@@ -43,19 +43,19 @@ interface ApplicationViewProps {
   links: Link[];
 }
 
-const ITEMS_PER_PAGE_OPTIONS = [10, 20, 50];
+const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 const ApplicationView: React.FC<ApplicationViewProps> = ({ applications: initialApplications }) => {
+  const [applications, setApplications] = useState<Application[]>(initialApplications);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const [applications, setApplications] = useState<Application[]>(initialApplications);
 
   // Récupérer les types uniques
   const uniqueTypes = Array.from(new Set(applications.map(app => app.type)));
@@ -215,20 +215,6 @@ const ApplicationView: React.FC<ApplicationViewProps> = ({ applications: initial
           </Select>
         </FormControl>
 
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Tags</InputLabel>
-          <Select
-            multiple
-            value={selectedTags}
-            label="Tags"
-            onChange={(e) => setSelectedTags(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-          >
-            {allTags.map(tag => (
-              <MenuItem key={tag} value={tag}>{tag}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
         <FormControl sx={{ minWidth: 100 }}>
           <InputLabel>Par page</InputLabel>
           <Select
@@ -244,20 +230,22 @@ const ApplicationView: React.FC<ApplicationViewProps> = ({ applications: initial
       </Stack>
 
       <TableContainer component={Paper}>
-        <Table>
+        <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>Nom</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Statut</TableCell>
+              <TableCell>Technologie</TableCell>
+              <TableCell>Mode de surveillance</TableCell>
               <TableCell>Dernière activité</TableCell>
-              <TableCell>Tags</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {paginatedApplications.map((application) => (
               <TableRow 
                 key={application.id}
+                hover
                 onClick={() => handleRowClick(application)}
                 sx={{ cursor: 'pointer' }}
               >
@@ -265,25 +253,25 @@ const ApplicationView: React.FC<ApplicationViewProps> = ({ applications: initial
                 <TableCell>{application.type}</TableCell>
                 <TableCell>
                   <Chip 
-                    label={application.status}
+                    label={application.status} 
                     color={application.status === 'ONLINE' ? 'success' : 
                            application.status === 'OFFLINE' ? 'error' : 
                            'warning'}
                     size="small"
                   />
                 </TableCell>
+                <TableCell>{application.technology}</TableCell>
                 <TableCell>
-                  {new Date(application.lastSeenTimestamp).toLocaleString()}
+                  <Chip 
+                    label={application.monitoringMode}
+                    color={application.monitoringMode === 'FULL_STACK' ? 'primary' : 'default'}
+                    size="small"
+                  />
                 </TableCell>
                 <TableCell>
-                  {application.tags?.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={tag}
-                      size="small"
-                      sx={{ mr: 0.5, mb: 0.5 }}
-                    />
-                  ))}
+                  {application.lastSeenTimestamp > 0 
+                    ? new Date(application.lastSeenTimestamp).toLocaleString('fr-FR')
+                    : 'Jamais'}
                 </TableCell>
               </TableRow>
             ))}
@@ -295,11 +283,10 @@ const ApplicationView: React.FC<ApplicationViewProps> = ({ applications: initial
         <Pagination 
           count={totalPages} 
           page={page} 
-          onChange={handlePageChange}
+          onChange={(_, value) => setPage(value)}
           color="primary"
           showFirstButton
           showLastButton
-          size="large"
         />
       </Box>
 

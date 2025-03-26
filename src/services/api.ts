@@ -37,6 +37,8 @@ export interface Application {
   type: string;
   status: string;
   lastSeenTimestamp: number;
+  monitoringMode: string;
+  technology: string;
   hosts: string[];
   tags: string[];
   properties: Record<string, any>;
@@ -117,25 +119,39 @@ export const fetchApplications = async (): Promise<Application[]> => {
   const response = await api.get('/api/v2/entities', {
     params: {
       entitySelector: 'type("APPLICATION")',
-      fields: '+properties,+tags'
+      fields: '+properties,+tags,+toRelationships,+fromRelationships'
     }
   });
   
   console.log(`[Dynatrace API] ${response.data.entities.length} applications récupérées`);
   return response.data.entities.map((entity: any) => {
+    console.log('Entité brute:', entity);
     const properties = entity.properties || {};
-    const hosts = Array.isArray(properties.hosts) ? properties.hosts : [];
+    console.log('Propriétés extraites:', properties);
     
-    return {
+    const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
+    console.log('Relations sortantes:', toRelationships);
+    
+    const hosts = toRelationships
+      .filter((rel: any) => rel.type === 'runs_on')
+      .map((rel: any) => rel.toEntityId);
+    console.log('Hôtes associés:', hosts);
+
+    const application: Application = {
       id: entity.entityId,
       name: entity.displayName,
-      hosts: hosts,
       type: entity.type,
-      tags: entity.tags || [],
       status: properties.status || 'unknown',
       lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
+      monitoringMode: properties.monitoringMode || 'unknown',
+      technology: properties.technology || 'unknown',
+      hosts: hosts,
+      tags: entity.tags || [],
       properties: properties
     };
+
+    console.log('Application mappée:', application);
+    return application;
   });
 };
 
@@ -372,25 +388,40 @@ export const fetchApplicationById = async (id: string): Promise<Application> => 
   console.log(`[Dynatrace API] Récupération des détails de l'application ${id}...`);
   const response = await api.get(`/api/v2/entities/${id}`, {
     params: {
-      fields: '+properties,+tags'
+      fields: '+properties,+tags,+toRelationships,+fromRelationships'
     }
   });
   
   console.log(`[Dynatrace API] Détails de l'application ${id} récupérés`);
   const entity = response.data;
-  const properties = entity.properties || {};
-  const hosts = Array.isArray(properties.hosts) ? properties.hosts : [];
+  console.log('Entité brute:', entity);
   
-  return {
+  const properties = entity.properties || {};
+  console.log('Propriétés extraites:', properties);
+  
+  const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
+  console.log('Relations sortantes:', toRelationships);
+  
+  const hosts = toRelationships
+    .filter((rel: any) => rel.type === 'runs_on')
+    .map((rel: any) => rel.toEntityId);
+  console.log('Hôtes associés:', hosts);
+
+  const application: Application = {
     id: entity.entityId,
     name: entity.displayName,
-    hosts: hosts,
     type: entity.type,
-    tags: entity.tags || [],
     status: properties.status || 'unknown',
     lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
+    monitoringMode: properties.monitoringMode || 'unknown',
+    technology: properties.technology || 'unknown',
+    hosts: hosts,
+    tags: entity.tags || [],
     properties: properties
   };
+
+  console.log('Application mappée:', application);
+  return application;
 };
 
 export const fetchServices = async (): Promise<Service[]> => {

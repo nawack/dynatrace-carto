@@ -34,7 +34,7 @@ import { Process, fetchProcesses } from '../services/api';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
 
-const ITEMS_PER_PAGE_OPTIONS = [5, 10, 25, 50, 100];
+const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 interface ProcessViewProps {
   processes: Process[];
@@ -44,7 +44,7 @@ const ProcessView: React.FC<ProcessViewProps> = ({ processes: initialProcesses }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedProcess, setSelectedProcess] = useState<Process | null>(null);
@@ -312,13 +312,14 @@ const ProcessView: React.FC<ProcessViewProps> = ({ processes: initialProcesses }
       </Stack>
 
       <TableContainer component={Paper}>
-        <Table>
+        <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>Nom</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Statut</TableCell>
-              <TableCell>Mode de surveillance</TableCell>
+              <TableCell>Hôte</TableCell>
+              <TableCell>Technologies</TableCell>
               <TableCell>Dernière activité</TableCell>
             </TableRow>
           </TableHead>
@@ -326,31 +327,33 @@ const ProcessView: React.FC<ProcessViewProps> = ({ processes: initialProcesses }
             {paginatedProcesses.map((process) => (
               <TableRow 
                 key={process.id}
+                hover
                 onClick={() => handleRowClick(process)}
                 sx={{ cursor: 'pointer' }}
               >
                 <TableCell>{process.name}</TableCell>
-                <TableCell>
-                  <Chip label={process.type} size="small" />
-                </TableCell>
+                <TableCell>{process.type}</TableCell>
                 <TableCell>
                   <Chip 
-                    label={process.status}
+                    label={process.status} 
                     color={process.status === 'ONLINE' ? 'success' : 
                            process.status === 'OFFLINE' ? 'error' : 
                            'warning'}
                     size="small"
                   />
                 </TableCell>
+                <TableCell>{process.host}</TableCell>
                 <TableCell>
-                  <Chip 
-                    label={process.monitoringMode}
-                    color={process.monitoringMode === 'FULL_STACK' ? 'primary' : 'default'}
-                    size="small"
-                  />
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {process.softwareTechnologies?.map((tech, index) => (
+                      <Chip key={index} label={tech} size="small" />
+                    ))}
+                  </Box>
                 </TableCell>
                 <TableCell>
-                  {new Date(process.lastSeenTimestamp).toLocaleString()}
+                  {process.lastSeenTimestamp > 0 
+                    ? new Date(process.lastSeenTimestamp).toLocaleString('fr-FR')
+                    : 'Jamais'}
                 </TableCell>
               </TableRow>
             ))}
@@ -362,11 +365,10 @@ const ProcessView: React.FC<ProcessViewProps> = ({ processes: initialProcesses }
         <Pagination 
           count={totalPages} 
           page={page} 
-          onChange={(event, value) => setPage(value)}
+          onChange={(_, value) => setPage(value)}
           color="primary"
           showFirstButton
           showLastButton
-          size="large"
         />
       </Box>
 

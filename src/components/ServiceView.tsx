@@ -34,7 +34,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { Service } from '../services/api';
 import { fetchServices } from '../services/api';
 
-const ITEMS_PER_PAGE_OPTIONS = [5, 10, 25, 50];
+const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 interface ServiceViewProps {
   services: Service[];
@@ -44,7 +44,7 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -216,20 +216,6 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
           </Select>
         </FormControl>
 
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Tags</InputLabel>
-          <Select
-            multiple
-            value={selectedTags}
-            label="Tags"
-            onChange={(e) => setSelectedTags(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-          >
-            {allTags.map(tag => (
-              <MenuItem key={tag} value={tag}>{tag}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
         <FormControl sx={{ minWidth: 100 }}>
           <InputLabel>Par page</InputLabel>
           <Select
@@ -245,21 +231,22 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
       </Stack>
 
       <TableContainer component={Paper}>
-        <Table>
+        <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>Nom</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Technologie</TableCell>
               <TableCell>Statut</TableCell>
+              <TableCell>Mode de surveillance</TableCell>
               <TableCell>Dernière activité</TableCell>
-              <TableCell>Tags</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {paginatedServices.map((service) => (
               <TableRow 
                 key={service.id}
+                hover
                 onClick={() => handleRowClick(service)}
                 sx={{ cursor: 'pointer' }}
               >
@@ -268,22 +255,16 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
                 <TableCell>{service.technology}</TableCell>
                 <TableCell>
                   <Chip 
-                    label={service.status}
+                    label={service.status} 
                     color={getStatusColor(service.status)}
                     size="small"
                   />
                 </TableCell>
+                <TableCell>{service.monitoringMode}</TableCell>
                 <TableCell>
                   {service.lastSeenTimestamp > 0 
                     ? new Date(service.lastSeenTimestamp).toLocaleString('fr-FR')
                     : 'Jamais'}
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {service.tags?.map((tag, index) => (
-                      <Chip key={index} label={tag} size="small" />
-                    ))}
-                  </Box>
                 </TableCell>
               </TableRow>
             ))}
@@ -295,11 +276,10 @@ const ServiceView: React.FC<ServiceViewProps> = ({ services: initialServices }) 
         <Pagination 
           count={totalPages} 
           page={page} 
-          onChange={handlePageChange}
+          onChange={(_, value) => setPage(value)}
           color="primary"
           showFirstButton
           showLastButton
-          size="large"
         />
       </Box>
 

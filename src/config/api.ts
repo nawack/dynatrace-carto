@@ -4,5 +4,8 @@ export const API_CONFIG = {
   headers: {
     'Authorization': `Api-Token ${process.env.REACT_APP_DYNATRACE_API_TOKEN}`,
     'Content-Type': 'application/json'
+  },
+  defaultParams: {
+    pageSize: 400
   }
 }; 

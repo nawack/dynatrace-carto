@@ -3,7 +3,8 @@ import { API_CONFIG } from '../config/api';
 
 const api = axios.create({
   baseURL: API_CONFIG.baseUrl,
-  headers: API_CONFIG.headers
+  headers: API_CONFIG.headers,
+  params: API_CONFIG.defaultParams
 });
 
 // Intercepteur pour logger les requêtes
@@ -143,7 +144,10 @@ export const fetchHosts = async (): Promise<Host[]> => {
   const response = await api.get('/api/v2/entities', {
     params: {
       entitySelector: 'type("HOST")',
-      fields: '+properties,+tags,+toRelationships,+fromRelationships'
+      fields: '+properties,+tags,+toRelationships,+fromRelationships',
+      pageSize: 400,
+      from: '-1h',
+      to: 'now'
     }
   });
   

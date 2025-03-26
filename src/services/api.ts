@@ -181,7 +181,7 @@ export const fetchLinks = async (): Promise<Link[]> => {
   console.log('[Dynatrace API] Récupération des liens...');
   const response = await api.get('/api/v2/entities', {
     params: {
-      entitySelector: 'type("APPLICATION"),type("HOST"),type("SERVICE")',
+      entitySelector: 'type("APPLICATION"),type("HOST"),type("SERVICE"),type("PROCESS")',
       fields: '+properties,+tags,+toRelationships,+fromRelationships'
     }
   });
@@ -189,19 +189,49 @@ export const fetchLinks = async (): Promise<Link[]> => {
   console.log(`[Dynatrace API] ${response.data.entities.length} entités récupérées`);
   const links: Link[] = [];
   
+  // Types de liens par catégorie
+  const networkLinks = ['NETWORK'];
+  const applicationLinks = ['HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING'];
+  const runsOnLinks = ['runs_on'];
+  
   response.data.entities.forEach((entity: any) => {
     // Traiter les relations sortantes
     const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
     toRelationships.forEach((rel: any) => {
-      if (['runs_on', 'HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING', 'NETWORK'].includes(rel.type)) {
+      const linkType = rel.type;
+      const sourceType = entity.type;
+      const targetType = rel.toEntityType;
+      
+      // Vérifier si le lien est valide selon le type d'entité
+      let isValidLink = false;
+      
+      // Liens réseau (entre hôtes ou entre processus)
+      if (networkLinks.includes(linkType)) {
+        isValidLink = (sourceType === 'HOST' && targetType === 'HOST') ||
+                     (sourceType === 'PROCESS' && targetType === 'PROCESS');
+      }
+      // Liens d'application (entre services ou vers des applications)
+      else if (applicationLinks.includes(linkType)) {
+        isValidLink = (sourceType === 'SERVICE' && targetType === 'SERVICE') ||
+                     (sourceType === 'SERVICE' && targetType === 'APPLICATION') ||
+                     (sourceType === 'APPLICATION' && targetType === 'SERVICE');
+      }
+      // Liens runs_on (applications/services/processus vers hôtes)
+      else if (runsOnLinks.includes(linkType)) {
+        isValidLink = (sourceType === 'APPLICATION' && targetType === 'HOST') ||
+                     (sourceType === 'SERVICE' && targetType === 'HOST') ||
+                     (sourceType === 'PROCESS' && targetType === 'HOST');
+      }
+
+      if (isValidLink) {
         links.push({
           source: entity.entityId,
           target: rel.toEntityId,
-          type: rel.type,
+          type: linkType,
           properties: {
             ...rel.properties,
-            sourceType: entity.type,
-            targetType: rel.toEntityType,
+            sourceType: sourceType,
+            targetType: targetType,
             status: rel.properties?.status || 'unknown',
             lastSeenTimestamp: rel.properties?.lastSeenTimestamp || '0',
             bandwidth: rel.properties?.bandwidth || '0',
@@ -219,15 +249,40 @@ export const fetchLinks = async (): Promise<Link[]> => {
     // Traiter les relations entrantes
     const fromRelationships = Array.isArray(entity.fromRelationships) ? entity.fromRelationships : [];
     fromRelationships.forEach((rel: any) => {
-      if (['runs_on', 'HTTP', 'REST', 'SOAP', 'gRPC', 'DATABASE', 'MESSAGING', 'NETWORK'].includes(rel.type)) {
+      const linkType = rel.type;
+      const sourceType = rel.fromEntityType;
+      const targetType = entity.type;
+      
+      // Vérifier si le lien est valide selon le type d'entité
+      let isValidLink = false;
+      
+      // Liens réseau (entre hôtes ou entre processus)
+      if (networkLinks.includes(linkType)) {
+        isValidLink = (sourceType === 'HOST' && targetType === 'HOST') ||
+                     (sourceType === 'PROCESS' && targetType === 'PROCESS');
+      }
+      // Liens d'application (entre services ou vers des applications)
+      else if (applicationLinks.includes(linkType)) {
+        isValidLink = (sourceType === 'SERVICE' && targetType === 'SERVICE') ||
+                     (sourceType === 'SERVICE' && targetType === 'APPLICATION') ||
+                     (sourceType === 'APPLICATION' && targetType === 'SERVICE');
+      }
+      // Liens runs_on (applications/services/processus vers hôtes)
+      else if (runsOnLinks.includes(linkType)) {
+        isValidLink = (sourceType === 'APPLICATION' && targetType === 'HOST') ||
+                     (sourceType === 'SERVICE' && targetType === 'HOST') ||
+                     (sourceType === 'PROCESS' && targetType === 'HOST');
+      }
+
+      if (isValidLink) {
         links.push({
           source: rel.fromEntityId,
           target: entity.entityId,
-          type: rel.type,
+          type: linkType,
           properties: {
             ...rel.properties,
-            sourceType: rel.fromEntityType,
-            targetType: entity.type,
+            sourceType: sourceType,
+            targetType: targetType,
             status: rel.properties?.status || 'unknown',
             lastSeenTimestamp: rel.properties?.lastSeenTimestamp || '0',
             bandwidth: rel.properties?.bandwidth || '0',
@@ -348,35 +403,33 @@ export const fetchServices = async (): Promise<Service[]> => {
 };
 
 export const fetchProcesses = async (): Promise<Process[]> => {
-  try {
-    const response = await fetch(`${API_CONFIG.baseUrl}/api/v2/entities?entitySelector=type(PROCESS)&from=-1h&to=now&fields=+properties,+tags,+relationships`, {
-      headers: {
-        'Authorization': `Api-Token ${API_CONFIG.token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Erreur HTTP: ${response.status}`);
+  console.log('[Dynatrace API] Récupération des processus...');
+  const response = await api.get('/api/v2/entities', {
+    params: {
+      entitySelector: 'type("PROCESS")',
+      fields: '+properties,+tags,+toRelationships,+fromRelationships'
     }
+  });
+  
+  console.log(`[Dynatrace API] ${response.data.entities.length} processus récupérés`);
+  return response.data.entities.map((entity: any) => {
+    const properties = entity.properties || {};
+    const toRelationships = Array.isArray(entity.toRelationships) ? entity.toRelationships : [];
+    const host = toRelationships
+      .find((rel: any) => rel.type === 'runs_on')
+      ?.toEntityId || '';
 
-    const data = await response.json();
-    console.log(`Nombre de processus récupérés: ${data.entities.length}`);
-
-    return data.entities.map((entity: any) => ({
+    return {
       id: entity.entityId,
       name: entity.displayName || entity.entityId,
       type: entity.type,
-      status: entity.properties?.status || 'unknown',
-      lastSeenTimestamp: parseInt(entity.properties?.lastSeenTimestamp || '0'),
-      monitoringMode: entity.properties?.monitoringMode || 'unknown',
-      autoInjection: entity.properties?.autoInjection || false,
-      host: entity.properties?.host || '',
+      status: properties.status || 'unknown',
+      lastSeenTimestamp: parseInt(properties.lastSeenTimestamp || '0'),
+      monitoringMode: properties.monitoringMode || 'unknown',
+      autoInjection: properties.autoInjection === 'true',
+      host: host,
       tags: entity.tags || [],
-      properties: entity.properties || {}
-    }));
-  } catch (error) {
-    console.error('Erreur lors de la récupération des processus:', error);
-    throw error;
-  }
+      properties: properties
+    };
+  });
 }; 

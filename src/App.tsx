@@ -154,6 +154,14 @@ const theme = createTheme({
         },
       },
     },
+    MuiContainer: {
+      styleOverrides: {
+        root: {
+          paddingLeft: '24px !important',
+          paddingRight: '24px !important',
+        },
+      },
+    },
   },
 });
 
@@ -237,7 +245,7 @@ function App() {
             '& .MuiDrawer-paper': {
               width: drawerWidth,
               boxSizing: 'border-box',
-              backgroundColor: '#1a1a1a',
+              backgroundColor: '#132F4C',
             },
           }}
         >
@@ -245,7 +253,7 @@ function App() {
             <Box sx={{ width: '100%', textAlign: 'center' }}>
               <Box
                 component="img"
-                src="/logo.jpg"
+                src="/logo1.png"
                 alt="Logo"
                 sx={{
                   width: '100%',
@@ -272,25 +280,25 @@ function App() {
           <List>
             <ListItem button onClick={() => setValue(0)} selected={value === 0}>
               <ListItemIcon>
-                <ComputerIcon sx={{ color: value === 0 ? '#90caf9' : 'inherit' }} />
+                <ComputerIcon sx={{ color: value === 0 ? '#00B4D2' : 'inherit' }} />
               </ListItemIcon>
               <ListItemText primary="Hôtes" />
             </ListItem>
             <ListItem button onClick={() => setValue(1)} selected={value === 1}>
               <ListItemIcon>
-                <AppsIcon sx={{ color: value === 1 ? '#90caf9' : 'inherit' }} />
+                <AppsIcon sx={{ color: value === 1 ? '#00B4D2' : 'inherit' }} />
               </ListItemIcon>
               <ListItemText primary="Applications" />
             </ListItem>
             <ListItem button onClick={() => setValue(2)} selected={value === 2}>
               <ListItemIcon>
-                <StorageIcon sx={{ color: value === 2 ? '#90caf9' : 'inherit' }} />
+                <StorageIcon sx={{ color: value === 2 ? '#00B4D2' : 'inherit' }} />
               </ListItemIcon>
               <ListItemText primary="Services" />
             </ListItem>
             <ListItem button onClick={() => setValue(3)} selected={value === 3}>
               <ListItemIcon>
-                <AccountTreeIcon sx={{ color: value === 3 ? '#90caf9' : 'inherit' }} />
+                <AccountTreeIcon sx={{ color: value === 3 ? '#00B4D2' : 'inherit' }} />
               </ListItemIcon>
               <ListItemText primary="Processus" />
             </ListItem>
@@ -304,6 +312,9 @@ function App() {
             p: 3,
             width: { sm: `calc(100% - ${drawerWidth}px)` },
             ml: { sm: `${drawerWidth}px` },
+            minHeight: '100vh',
+            backgroundColor: '#0A1929',
+            overflow: 'auto'
           }}
         >
           <Toolbar />
@@ -313,18 +324,25 @@ function App() {
               {error}
             </Alert>
           )}
-          <TabPanel value={value} index={0}>
-            <HostView hosts={hosts} links={links} applications={applications} />
-          </TabPanel>
-          <TabPanel value={value} index={1}>
-            <ApplicationView applications={applications} hosts={hosts} links={links} />
-          </TabPanel>
-          <TabPanel value={value} index={2}>
-            <ServiceView services={services} />
-          </TabPanel>
-          <TabPanel value={value} index={3}>
-            <ProcessView processes={processes} />
-          </TabPanel>
+          <Box sx={{ 
+            p: 3,
+            backgroundColor: '#132F4C',
+            borderRadius: 1,
+            boxShadow: 1
+          }}>
+            <TabPanel value={value} index={0}>
+              <HostView hosts={hosts} links={links} applications={applications} />
+            </TabPanel>
+            <TabPanel value={value} index={1}>
+              <ApplicationView applications={applications} hosts={hosts} links={links} />
+            </TabPanel>
+            <TabPanel value={value} index={2}>
+              <ServiceView services={services} />
+            </TabPanel>
+            <TabPanel value={value} index={3}>
+              <ProcessView processes={processes} />
+            </TabPanel>
+          </Box>
         </Box>
       </Box>
     </ThemeProvider>

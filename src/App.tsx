@@ -253,8 +253,12 @@ function App() {
             <Box sx={{ width: '100%', textAlign: 'center' }}>
               <Box
                 component="img"
-                src="/logo1.png"
+                src={`${process.env.PUBLIC_URL}/logo1.png`}
                 alt="Logo"
+                onError={(e) => {
+                  console.error('Erreur de chargement du logo:', e);
+                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMwMEI0RDIiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmIiBmb250LXNpemU9IjIwIj5EeW5hQ2FydG88L3RleHQ+PC9zdmc+';
+                }}
                 sx={{
                   width: '100%',
                   height: 'auto',

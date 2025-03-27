@@ -10,8 +10,23 @@ import {
   LinearProgress,
   Typography,
   AppBar,
-  Alert
+  Alert,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
+  Toolbar,
+  Divider
 } from '@mui/material';
+import {
+  Computer as ComputerIcon,
+  Apps as AppsIcon,
+  Storage as StorageIcon,
+  AccountTree as AccountTreeIcon,
+  Menu as MenuIcon
+} from '@mui/icons-material';
 import { HostView, ApplicationView, ServiceView, ProcessView, HostLinkView, ServiceLinkView, ProcessLinkView } from './components';
 import { fetchApplications, fetchHosts, fetchLinks, Application, Host, Link, Service, Process, fetchServices, fetchProcesses } from './services/api';
 
@@ -45,14 +60,22 @@ const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#90caf9',
+      main: '#00B4D2',
+      light: '#48CAE4',
+      dark: '#0096C7',
     },
     secondary: {
-      main: '#f48fb1',
+      main: '#FF6B6B',
+      light: '#FF8E8E',
+      dark: '#FF5252',
     },
     background: {
-      default: '#121212',
-      paper: '#1e1e1e',
+      default: '#0A1929',
+      paper: '#132F4C',
+    },
+    text: {
+      primary: '#FFFFFF',
+      secondary: 'rgba(255, 255, 255, 0.7)',
     },
   },
   components: {
@@ -74,8 +97,60 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            backgroundColor: 'rgba(0, 180, 210, 0.08)',
           },
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: '#132F4C',
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#0A1929',
+        },
+      },
+    },
+    MuiListItem: {
+      styleOverrides: {
+        root: {
+          '&.Mui-selected': {
+            backgroundColor: 'rgba(0, 180, 210, 0.16)',
+            '&:hover': {
+              backgroundColor: 'rgba(0, 180, 210, 0.24)',
+            },
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'rgba(0, 180, 210, 0.16)',
+          color: '#48CAE4',
+          '&.MuiChip-colorSuccess': {
+            backgroundColor: 'rgba(0, 200, 81, 0.16)',
+            color: '#00C851',
+          },
+          '&.MuiChip-colorError': {
+            backgroundColor: 'rgba(255, 107, 107, 0.16)',
+            color: '#FF6B6B',
+          },
+        },
+      },
+    },
+    MuiLinearProgress: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'rgba(0, 180, 210, 0.12)',
+        },
+        bar: {
+          backgroundColor: '#00B4D2',
         },
       },
     },
@@ -83,14 +158,15 @@ const theme = createTheme({
 });
 
 function App() {
+  const [value, setValue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [value, setValue] = useState(0);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [processes, setProcesses] = useState<Process[]>([]);
   const [links, setLinks] = useState<Link[]>([]);
+  const [drawerOpen, setDrawerOpen] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -124,63 +200,132 @@ function App() {
     setValue(newValue);
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <LinearProgress />
-      </Box>
-    );
-  }
+  const handleDrawerToggle = () => {
+    setDrawerOpen(!drawerOpen);
+  };
 
-  if (error) {
-    return (
-      <Container>
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      </Container>
-    );
-  }
+  const drawerWidth = 240;
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ flexGrow: 1 }}>
-        <AppBar position="static">
-          <Tabs value={value} onChange={handleChange} aria-label="navigation tabs">
-            <Tab label="Hôtes" />
-            <Tab label="Services" />
-            <Tab label="Applications" />
-            <Tab label="Processus" />
-            <Tab label="Liens hôtes" />
-            <Tab label="Liens services" />
-            <Tab label="Liens processus" />
-          </Tabs>
+      <Box sx={{ display: 'flex' }}>
+        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" noWrap component="div">
+              Dynatrace Cartography
+            </Typography>
+          </Toolbar>
         </AppBar>
 
-        <Container maxWidth="xl" sx={{ mt: 4 }}>
+        <Drawer
+          variant="persistent"
+          anchor="left"
+          open={drawerOpen}
+          sx={{
+            width: drawerWidth,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: drawerWidth,
+              boxSizing: 'border-box',
+              backgroundColor: '#1a1a1a',
+            },
+          }}
+        >
+          <Toolbar>
+            <Box sx={{ width: '100%', textAlign: 'center' }}>
+              <Box
+                component="img"
+                src="/logo.jpg"
+                alt="Logo"
+                sx={{
+                  width: '100%',
+                  height: 'auto',
+                  maxHeight: 60,
+                  objectFit: 'contain',
+                  mb: 1
+                }}
+              />
+              <Typography
+                variant="h6"
+                sx={{
+                  color: '#00B4D2',
+                  fontWeight: 'bold',
+                  letterSpacing: 1,
+                  textTransform: 'uppercase'
+                }}
+              >
+                DynaCarto
+              </Typography>
+            </Box>
+          </Toolbar>
+          <Divider />
+          <List>
+            <ListItem button onClick={() => setValue(0)} selected={value === 0}>
+              <ListItemIcon>
+                <ComputerIcon sx={{ color: value === 0 ? '#90caf9' : 'inherit' }} />
+              </ListItemIcon>
+              <ListItemText primary="Hôtes" />
+            </ListItem>
+            <ListItem button onClick={() => setValue(1)} selected={value === 1}>
+              <ListItemIcon>
+                <AppsIcon sx={{ color: value === 1 ? '#90caf9' : 'inherit' }} />
+              </ListItemIcon>
+              <ListItemText primary="Applications" />
+            </ListItem>
+            <ListItem button onClick={() => setValue(2)} selected={value === 2}>
+              <ListItemIcon>
+                <StorageIcon sx={{ color: value === 2 ? '#90caf9' : 'inherit' }} />
+              </ListItemIcon>
+              <ListItemText primary="Services" />
+            </ListItem>
+            <ListItem button onClick={() => setValue(3)} selected={value === 3}>
+              <ListItemIcon>
+                <AccountTreeIcon sx={{ color: value === 3 ? '#90caf9' : 'inherit' }} />
+              </ListItemIcon>
+              <ListItemText primary="Processus" />
+            </ListItem>
+          </List>
+        </Drawer>
+
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
+            ml: { sm: `${drawerWidth}px` },
+          }}
+        >
+          <Toolbar />
+          {loading && <LinearProgress />}
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
           <TabPanel value={value} index={0}>
             <HostView hosts={hosts} links={links} applications={applications} />
           </TabPanel>
           <TabPanel value={value} index={1}>
-            <ServiceView services={services} />
+            <ApplicationView applications={applications} hosts={hosts} links={links} />
           </TabPanel>
           <TabPanel value={value} index={2}>
-            <ApplicationView applications={applications} hosts={hosts} links={links} />
+            <ServiceView services={services} />
           </TabPanel>
           <TabPanel value={value} index={3}>
             <ProcessView processes={processes} />
           </TabPanel>
-          <TabPanel value={value} index={4}>
-            <HostLinkView hosts={hosts} />
-          </TabPanel>
-          <TabPanel value={value} index={5}>
-            <ServiceLinkView services={services} />
-          </TabPanel>
-          <TabPanel value={value} index={6}>
-            <ProcessLinkView processes={processes} />
-          </TabPanel>
-        </Container>
+        </Box>
       </Box>
     </ThemeProvider>
   );
